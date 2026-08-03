@@ -1,0 +1,188 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "StudyLife verbinden",
+        "description": "Basis-URL des selbst gehosteten StudyLife-Servers, z. B. {example}. Der Server schützt seine API mit persönlichen API-Keys — den Key auf der Setup-Seite der StudyLife-App generieren (Karte „Home Assistant“) und hier einfügen.",
+        "data": {
+          "url": "URL",
+          "api_key": "API-Key"
+        },
+        "data_description": {
+          "api_key": "Einmaliger Kopplungsschritt: Key auf der Setup-Seite der StudyLife-App generieren (Karte „Home Assistant“) und den angezeigten Wert kopieren. Der Key ist langlebig — er rotiert nie und läuft nicht ab; er wird nur ungültig, wenn er in der App neu generiert oder widerrufen wird."
+        }
+      },
+      "reauth_confirm": {
+        "title": "StudyLife neu koppeln",
+        "description": "Der gespeicherte API-Key wird vom Server nicht mehr akzeptiert — er wurde in der StudyLife-App neu generiert oder widerrufen (von selbst läuft er nie ab). Auf der Setup-Seite der App (Karte „Home Assistant“) einen Key generieren und den neuen Wert hier einfügen.",
+        "data": {
+          "api_key": "API-Key"
+        },
+        "data_description": {
+          "api_key": "Neuen Key auf der Setup-Seite der StudyLife-App generieren (Karte „Home Assistant“) und den angezeigten Wert kopieren."
+        }
+      },
+      "reconfigure_confirm": {
+        "title": "StudyLife neu konfigurieren",
+        "description": "URL und/oder API-Key dieser Verbindung anpassen — z. B. wenn sich die Server-Adresse geändert hat oder bei der Ersteinrichtung ein Tippfehler passiert ist.",
+        "data": {
+          "url": "URL",
+          "api_key": "API-Key"
+        },
+        "data_description": {
+          "api_key": "Bei geänderter Server-Adresse reicht meist der bestehende Key. Wird ein neuer benötigt: auf der Setup-Seite der StudyLife-App generieren (Karte „Home Assistant“) und den angezeigten Wert kopieren."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen. URL prüfen und sicherstellen, dass der Server erreichbar ist.",
+      "invalid_auth": "Der API-Key wurde abgelehnt. Auf der Setup-Seite der StudyLife-App einen neuen Key generieren und dessen Wert verwenden."
+    },
+    "abort": {
+      "already_configured": "Dieser StudyLife-Server ist bereits eingerichtet.",
+      "reauth_successful": "Neu-Kopplung erfolgreich.",
+      "reconfigure_successful": "Neu konfiguriert."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "StudyLife-Optionen",
+        "data": {
+          "scan_interval": "Abfrageintervall (Sekunden)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "active_session": { "name": "Aktive Session" },
+      "next_session": { "name": "Nächste Session" },
+      "next_session_start": { "name": "Nächste Session – Start" },
+      "next_session_end": { "name": "Nächste Session – Ende" },
+      "active_session_end": { "name": "Aktive Session – Ende" },
+      "today_sessions": { "name": "Sessions heute" },
+      "week_sessions": { "name": "Sessions diese Woche" },
+      "week_hours": { "name": "Stunden diese Woche" },
+      "streak": { "name": "Streak" },
+      "week_quota": { "name": "Wochenkontingent" },
+      "month_quota": { "name": "Monatskontingent" },
+      "average_grade": { "name": "Ø Note" },
+      "ects_progress": { "name": "ECTS-Fortschritt" },
+      "course_hours": { "name": "Kurse mit Lernzeit" },
+      "next_course_goal": { "name": "Nächstes Kursziel" },
+      "next_course_goal_date": { "name": "Nächstes Kursziel – Datum" },
+      "motivational_style": { "name": "Motivationsstil" },
+      "courses": { "name": "Kurskatalog" },
+      "timer_phase": { "name": "Timer-Phase" },
+      "timer_phase_ends": { "name": "Timer-Phase – Ende" },
+      "notes_count": { "name": "Notizen" },
+      "neglected_course": { "name": "Balance-Check" },
+      "achievements_unlocked": { "name": "Freigeschaltete Achievements" },
+      "longest_streak": { "name": "Längste Streak" },
+      "topics_progress": { "name": "Abgeschlossene Themen" },
+      "study_forecast": { "name": "Lernprognose" },
+      "month_comparison": { "name": "Monatsvergleich" },
+      "weekly_report": { "name": "Wochenbericht" },
+      "active_program": { "name": "Aktiver Studiengang" }
+    },
+    "binary_sensor": {
+      "studying_now": { "name": "Lernt gerade" },
+      "timer_running": { "name": "Timer läuft" },
+      "week_quota_warning": { "name": "Wochenkontingent-Warnung" },
+      "month_quota_warning": { "name": "Monatskontingent-Warnung" },
+      "inactivity_warning": { "name": "Inaktivitäts-Warnung" },
+      "program_completed": { "name": "Abgeschlossen" },
+      "program_active": { "name": "In der App aktiv" }
+    },
+    "calendar": {
+      "sessions": { "name": "Lernsessions" },
+      "goals": { "name": "Kursziele" }
+    },
+    "select": {
+      "active_course": { "name": "Aktiver Kurs" }
+    }
+  },
+  "services": {
+    "create_session": {
+      "name": "Session anlegen",
+      "description": "Legt eine neue Lerneinheit in StudyLife an.",
+      "fields": {
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses." },
+        "course_name": { "name": "Kursname", "description": "Anzeigename des Kurses." },
+        "course_color": { "name": "Kursfarbe", "description": "Hex-Farbe, z. B. #6C5CE7." },
+        "start_time": { "name": "Start", "description": "Beginn der Lerneinheit." },
+        "end_time": { "name": "Ende", "description": "Ende der Lerneinheit." },
+        "topic": { "name": "Thema", "description": "Optionales Thema der Session." },
+        "notes": { "name": "Notizen", "description": "Optionale Notizen." },
+        "timer_mode_id": { "name": "Timer-Modus-ID", "description": "1=Pomodoro, 2=Flow, 3=Ultradian, 4=Claude, 5=Sprint." }
+      }
+    },
+    "update_session": {
+      "name": "Session bearbeiten",
+      "description": "Ändert einzelne Felder einer bestehenden Session (nur angegebene Felder werden geändert, Rest bleibt erhalten).",
+      "fields": {
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "session_id": { "name": "Session-ID", "description": "ID der zu bearbeitenden Session." },
+        "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses." },
+        "course_name": { "name": "Kursname", "description": "Anzeigename des Kurses." },
+        "course_color": { "name": "Kursfarbe", "description": "Hex-Farbe, z. B. #6C5CE7." },
+        "start_time": { "name": "Start", "description": "Neuer Beginn der Lerneinheit." },
+        "end_time": { "name": "Ende", "description": "Neues Ende der Lerneinheit." },
+        "topic": { "name": "Thema", "description": "Thema der Session." },
+        "notes": { "name": "Notizen", "description": "Notizen zur Session." },
+        "is_completed": { "name": "Abgeschlossen", "description": "Session als abgeschlossen markieren/entmarkieren." },
+        "timer_mode_id": { "name": "Timer-Modus-ID", "description": "1=Pomodoro, 2=Flow, 3=Ultradian, 4=Claude, 5=Sprint." }
+      }
+    },
+    "delete_session": {
+      "name": "Session löschen",
+      "description": "Löscht eine Lerneinheit anhand ihrer Session-ID.",
+      "fields": {
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "session_id": { "name": "Session-ID", "description": "ID der zu löschenden Session (siehe Sensor-Attribute oder Kalender)." }
+      }
+    },
+    "set_course_goal": {
+      "name": "Kursziel setzen",
+      "description": "Legt Zieldatum, Note und/oder Abschluss-Notiz für einen Kurs an oder aktualisiert sie.",
+      "fields": {
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses." },
+        "course_name": { "name": "Kursname", "description": "Anzeigename des Kurses." },
+        "target_date": { "name": "Ziel-Datum", "description": "Gewünschtes Abschlussdatum." },
+        "grade": { "name": "Note", "description": "Abschlussnote, z. B. 1,3." },
+        "completion_note": { "name": "Abschluss-Notiz", "description": "Freitext-Notiz zum Kursabschluss." }
+      }
+    },
+    "generate_exam_plan": {
+      "name": "Prüfungsplan generieren",
+      "description": "Verteilt die noch offenen Themen eines Kurses automatisch als Lernsessions auf freie Zeitfenster im Kalender bis zum Prüfungstermin.",
+      "fields": {
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses." },
+        "exam_date": { "name": "Prüfungstermin", "description": "Datum der Prüfung. Sessions werden bis zum Vortag geplant." },
+        "session_length_minutes": { "name": "Sessionlänge (Minuten)", "description": "Länge je vorgeschlagener Session. Standard: 90." },
+        "total_hours": { "name": "Lernstunden gesamt", "description": "Gesamte geplante Lernzeit bis zur Prüfung. Standard: automatisch aus offenen Themen geschätzt." }
+      }
+    },
+    "set_active_program": {
+      "name": "Aktiven Studiengang wechseln",
+      "description": "Setzt, welcher Studiengang in der StudyLife-App selbst aktiv ist (Kursauswahl, Web-Dashboard). In Home Assistant bleiben unabhängig davon alle Studiengänge als eigene Geräte mit eigenen Sensoren sichtbar - nur die kursbezogenen Hub-Entitäten (Kurs-Picker, Kursziel-Kalender, aufgelöste Kurslisten) folgen dem Wechsel.",
+      "fields": {
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "program_id": { "name": "Studiengang-ID", "description": "ID des Studiengangs (siehe sensor.studylife_active_program, Attribut 'programs'). Weglassen, um zum eingebauten Studiengang zurückzuwechseln." }
+      }
+    }
+  },
+  "exceptions": {
+    "no_integration_configured": { "message": "Keine StudyLife-Integration konfiguriert." },
+    "unknown_device": { "message": "Unbekanntes Gerät: {device_id}" },
+    "device_not_studylife": { "message": "Dieses Gerät gehört zu keiner StudyLife-Integration." },
+    "multiple_servers_need_device_id": { "message": "Mehrere StudyLife-Server konfiguriert - bitte device_id im Service-Aufruf angeben." },
+    "course_not_in_catalog": { "message": "Kurs-ID {course_id} ist nicht im Katalog (/api/courses) - course_name muss angegeben werden." },
+    "session_not_found": { "message": "Session {session_id} wurde nicht gefunden." },
+    "unknown_program": { "message": "Studiengang-ID {program_id} ist nicht bekannt (sensor.studylife_active_program, Attribut 'programs')." }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "domain": "studylife",
+  "name": "StudyLife",
+  "codeowners": ["@lkoerber"],
+  "config_flow": true,
+  "documentation": "https://github.com/lukislp/studylife-hacs",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}

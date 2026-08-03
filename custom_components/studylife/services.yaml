@@ -1,0 +1,201 @@
+create_session:
+  fields:
+    device_id:
+      required: false
+      selector:
+        device:
+          integration: studylife
+    course_id:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 999
+          mode: box
+    course_name:
+      required: false
+      selector:
+        text:
+    course_color:
+      required: false
+      selector:
+        text:
+    start_time:
+      required: true
+      selector:
+        datetime:
+    end_time:
+      required: true
+      selector:
+        datetime:
+    topic:
+      required: false
+      selector:
+        text:
+    notes:
+      required: false
+      selector:
+        text:
+          multiline: true
+    timer_mode_id:
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 5
+          mode: box
+
+update_session:
+  fields:
+    device_id:
+      required: false
+      selector:
+        device:
+          integration: studylife
+    session_id:
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+    course_id:
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 999
+          mode: box
+    course_name:
+      required: false
+      selector:
+        text:
+    course_color:
+      required: false
+      selector:
+        text:
+    start_time:
+      required: false
+      selector:
+        datetime:
+    end_time:
+      required: false
+      selector:
+        datetime:
+    topic:
+      required: false
+      selector:
+        text:
+    notes:
+      required: false
+      selector:
+        text:
+          multiline: true
+    is_completed:
+      required: false
+      selector:
+        boolean:
+    timer_mode_id:
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 5
+          mode: box
+
+delete_session:
+  fields:
+    device_id:
+      required: false
+      selector:
+        device:
+          integration: studylife
+    session_id:
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+
+set_course_goal:
+  fields:
+    device_id:
+      required: false
+      selector:
+        device:
+          integration: studylife
+    course_id:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 999
+          mode: box
+    course_name:
+      required: false
+      selector:
+        text:
+    target_date:
+      required: false
+      selector:
+        date:
+    grade:
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 5
+          step: 0.1
+          mode: box
+    completion_note:
+      required: false
+      selector:
+        text:
+          multiline: true
+
+generate_exam_plan:
+  fields:
+    device_id:
+      required: false
+      selector:
+        device:
+          integration: studylife
+    course_id:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 999
+          mode: box
+    exam_date:
+      required: true
+      selector:
+        date:
+    session_length_minutes:
+      required: false
+      selector:
+        number:
+          min: 15
+          max: 240
+          mode: box
+    total_hours:
+      required: false
+      selector:
+        number:
+          min: 0.5
+          max: 300
+          step: 0.5
+          mode: box
+
+set_active_program:
+  fields:
+    device_id:
+      required: false
+      selector:
+        device:
+          integration: studylife
+    program_id:
+      required: false
+      selector:
+        number:
+          min: 1
+          mode: box
