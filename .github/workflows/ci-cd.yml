@@ -24,9 +24,12 @@ jobs:
       # Official HACS structural validation (hacs.json, manifest fields, etc.) - always
       # referenced by branch per HACS's own docs, since it validates against whatever
       # the current HACS requirements are, not a fixed historical ruleset.
+      # ignore: brands - brand-asset submission (a one-time PR to home-assistant/brands)
+      # is deliberately deferred; don't block every push on it in the meantime.
       - uses: hacs/action@main
         with:
           category: integration
+          ignore: brands
 
   test-hassfest:
     runs-on: ubuntu-latest
