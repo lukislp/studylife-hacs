@@ -8,13 +8,12 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import homeassistant.util.dt as dt_util
 import voluptuous as vol
-
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
-import homeassistant.util.dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import StudyLifeCoordinator

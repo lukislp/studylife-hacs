@@ -37,10 +37,10 @@ import re
 from datetime import date, datetime, timedelta
 from typing import Any
 
+import homeassistant.util.dt as dt_util
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-import homeassistant.util.dt as dt_util
 
 from .api import StudyLifeApiAuthError, StudyLifeApiClient, StudyLifeApiError
 from .const import (
@@ -629,7 +629,7 @@ def _calc_neglected_course(
     courses: list[dict[str, Any]],
     completed_history: list[StudySession],
     today: date,
-) -> "NeglectedCourse | None":
+) -> NeglectedCourse | None:
     """Active (selected, not completed) course studied longest ago (or never in
     the lookback window) - mirrors Index.razor's "Balance-Check" card. Returns
     None if there's fewer than 2 active courses (nothing to compare)."""

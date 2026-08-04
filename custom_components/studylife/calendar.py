@@ -4,11 +4,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
+import homeassistant.util.dt as dt_util
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-import homeassistant.util.dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import StudyLifeCoordinator, StudySession
