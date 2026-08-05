@@ -637,17 +637,20 @@ def test_calc_neglected_course_excludes_completed_courses_from_active_set() -> N
 # ---------------------------------------------------------------------------
 
 
-def test_calc_month_quota_prorates_target_early_in_month() -> None:
-    month_start = date(2026, 2, 1)  # Feb 2026, 28 days -> 4 weeks total
-    today = date(2026, 2, 2)  # 1 day elapsed -> 1 week's worth of target
+def test_calc_month_quota_full_target_early_in_month() -> None:
+    """The full monthly goal applies from day one - the former elapsed-weeks proration
+    was removed in lockstep with the app's dashboard card (the prorated target read as
+    a bug next to the configured goal in the settings)."""
+    month_start = date(2026, 2, 1)  # Feb 2026
+    today = date(2026, 2, 2)  # 1 day elapsed - target no longer scales with this
     quota = _calc_month_quota(month_hours=1, today=today, month_start=month_start, month_min=40, month_max=60)
-    assert quota.target_min == round(40 * 1 / 4, 2)
-    assert quota.target_max == round(60 * 1 / 4, 2)
+    assert quota.target_min == 40.0
+    assert quota.target_max == 60.0
 
 
 def test_calc_month_quota_full_target_at_end_of_month() -> None:
     month_start = date(2026, 2, 1)
-    today = date(2026, 2, 28)  # last day -> full target
+    today = date(2026, 2, 28)  # last day - same full target as on day one
     quota = _calc_month_quota(month_hours=1, today=today, month_start=month_start, month_min=40, month_max=60)
     assert quota.target_min == 40.0
     assert quota.target_max == 60.0

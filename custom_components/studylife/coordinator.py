@@ -29,10 +29,8 @@ hub-device entities, calendars and services), and `study_programs`/
 """
 from __future__ import annotations
 
-import calendar
 import dataclasses
 import logging
-import math
 import re
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -673,17 +671,15 @@ def _calc_neglected_course(
 def _calc_month_quota(
     month_hours: float, today: date, month_start: date, month_min: float, month_max: float
 ) -> QuotaInfo:
-    """Prorates the absolute monthly goal (MonthlyGoalMinHours/MaxHours, independently
-    configurable from the weekly goal - see Setup.razor's monthly-goal card) by how much
-    of the month has elapsed, same as before: weeks_elapsed/total_weeks_in_month scales the
-    full-month target down early in the month, so progress doesn't look misleadingly "behind"
-    a full month's target on day 3. total_weeks_in_month uses the same ceil(days/7)
-    convention as `weeks_elapsed` itself."""
-    days_in_month = calendar.monthrange(month_start.year, month_start.month)[1]
-    total_weeks_in_month = max(1, math.ceil(days_in_month / 7.0))
-    weeks_elapsed = min(total_weeks_in_month, max(1, math.ceil((today - month_start).days / 7.0)))
-    target_min = month_min * weeks_elapsed / total_weeks_in_month
-    target_max = month_max * weeks_elapsed / total_weeks_in_month
+    """Applies the absolute monthly goal (MonthlyGoalMinHours/MaxHours, independently
+    configurable from the weekly goal - see Setup.razor's monthly-goal card) in FULL,
+    mirroring the app's dashboard card. The former elapsed-weeks proration was removed
+    on both sides in lockstep: a prorated target displayed as e.g. "20-26 h" while the
+    settings said "100-130 h", which read as a bug rather than as pacing help.
+    `today`/`month_start` stay in the signature deliberately: the caller still scopes
+    the HOURS to the current month - only the target no longer scales with elapsed time."""
+    target_min = float(month_min)
+    target_max = float(month_max)
     max_bar = target_max * 1.15
     percent = min(100.0, month_hours / max_bar * 100) if max_bar else 0.0
     warning = month_hours < target_min

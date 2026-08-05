@@ -95,10 +95,10 @@ async def test_explicit_zero_goal_is_not_overridden_by_default(
     assert coordinator.data.month_quota.warning is False
 
 
-@freeze_time("2026-01-31")  # last day of the month: month_quota's proration factor
-# (weeks_elapsed/total_weeks_in_month) is exactly 1 here, so the prorated target
-# equals the raw default - any other day would under-count it by design and make
-# a direct equality assertion wrong, not the source.
+@freeze_time("2026-01-31")  # deterministic date; since the month-quota proration was
+# removed (full goal applies on every day of the month, in lockstep with the app's
+# dashboard card), the specific day no longer matters for the equality assertions -
+# the freeze just keeps the test independent of the wall clock.
 async def test_missing_goal_settings_fall_back_to_defaults(
     hass: HomeAssistant, mock_api_client: AsyncMock
 ) -> None:
