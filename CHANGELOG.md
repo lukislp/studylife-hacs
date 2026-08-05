@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/lukislp/studylife-hacs/compare/v1.1.2...v1.1.3) (2026-08-05)
+
+
+### Bug Fixes
+
+* correct codeowners to match the actual GitHub account ([@lukislp](https://github.com/lukislp)) ([a86a399](https://github.com/lukislp/studylife-hacs/commit/a86a399b4ed4cfb0a18302955995cd6c61995f21))
+
 ## [1.1.2](https://github.com/lukislp/studylife-hacs/compare/v1.1.1...v1.1.2) (2026-08-05)
 
 
