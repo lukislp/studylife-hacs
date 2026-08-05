@@ -1,3 +1,15 @@
+# [1.2.0](https://github.com/lukislp/studylife-hacs/compare/v1.1.3...v1.2.0) (2026-08-05)
+
+
+### Bug Fixes
+
+* stop skipping the hacs brands check now that a local icon exists ([50c7283](https://github.com/lukislp/studylife-hacs/commit/50c7283d6769873ebdbc4c0c6e0d2fafe0cf66aa))
+
+
+### Features
+
+* add local brand icon via Home Assistant's brand proxy API ([aa115c6](https://github.com/lukislp/studylife-hacs/commit/aa115c61081a743979fe299c824efc80a3c97c95))
+
 ## [1.1.3](https://github.com/lukislp/studylife-hacs/compare/v1.1.2...v1.1.3) (2026-08-05)
 
 
