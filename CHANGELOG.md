@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/lukislp/studylife-hacs/compare/v1.1.1...v1.1.2) (2026-08-05)
+
+
+### Bug Fixes
+
+* surface build/release/license status via README badges ([3eae438](https://github.com/lukislp/studylife-hacs/commit/3eae438c83a6e47b88503ea1d64805db68eb8050))
+
 ## [1.1.1](https://github.com/lukislp/studylife-hacs/compare/v1.1.0...v1.1.1) (2026-08-05)
 
 
