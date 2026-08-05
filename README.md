@@ -1,5 +1,8 @@
 # StudyLife — Home Assistant Integration
 
+[![CI/CD](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml)
+[![Release](https://img.shields.io/github/v/release/lukislp/studylife-hacs)](https://github.com/lukislp/studylife-hacs/releases)
+[![License: MIT](https://img.shields.io/github/license/lukislp/studylife-hacs)](LICENSE)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
 
 Home Assistant custom integration for [StudyLife](https://github.com/lukislp/studylife), a
