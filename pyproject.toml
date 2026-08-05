@@ -1,0 +1,10 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# Naive datetimes are the domain-correct choice throughout this test suite: the
+# StudyLife API/coordinator work with naive local timestamps everywhere (see
+# coordinator.py's module docstring) - every StudySession/session dict built in
+# tests is naive on purpose, matching what _to_session/_parse_dt actually produce.
+"tests/*" = ["DTZ001"]

@@ -251,6 +251,18 @@ def _parse_dt(value: str) -> datetime:
     return parsed.replace(tzinfo=None)
 
 
+def _setting_or_default(settings: dict[str, Any], key: str, default: float) -> float:
+    """settings[key] if the field is present, else `default` - falls back only when
+    the field is genuinely missing (None/absent, e.g. a not-yet-migrated server that
+    doesn't send it at all), NOT when the user has explicitly set it to 0. A plain
+    `settings.get(key) or default` looks equivalent but silently discards an
+    explicit 0 (Python's `or` treats it as falsy), which would override a user's
+    "no goal" setting with the built-in default and fire quota warnings they
+    deliberately turned off."""
+    value = settings.get(key)
+    return float(value) if value is not None else default
+
+
 def _to_session(raw: dict[str, Any]) -> StudySession:
     return StudySession(
         id=raw["id"],
@@ -476,7 +488,9 @@ def _calc_weekly_report(history: list[StudySession], today: date) -> WeeklyRepor
 
 def _calc_week_quota(week_hours: float, week_min: float, week_max: float) -> QuotaInfo:
     max_bar = week_max * 1.15
-    percent = min(100.0, week_hours / max_bar * 100)
+    # A user-configured 0 target ("no goal") makes max_bar 0 too - guard against
+    # dividing by it, same as _calc_month_quota already does for the same reason.
+    percent = min(100.0, week_hours / max_bar * 100) if max_bar else 0.0
     warning = week_hours < week_min
     missing = max(0.0, week_min - week_hours)
     return QuotaInfo(
@@ -968,12 +982,14 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
             today,
         )
 
-        # .get(...) with a fallback keeps this working against a not-yet-migrated server
-        # (older StudyLife versions don't send these fields at all).
-        week_quota_min = float(settings.get("weeklyGoalMinHours") or WEEK_QUOTA_MIN_HOURS)
-        week_quota_max = float(settings.get("weeklyGoalMaxHours") or WEEK_QUOTA_MAX_HOURS)
-        month_quota_min = float(settings.get("monthlyGoalMinHours") or MONTH_QUOTA_MIN_HOURS)
-        month_quota_max = float(settings.get("monthlyGoalMaxHours") or MONTH_QUOTA_MAX_HOURS)
+        # _setting_or_default (not `.get(...) or default`) keeps this working against a
+        # not-yet-migrated server (older StudyLife versions don't send these fields at
+        # all) WITHOUT overriding a user's explicit 0 ("no goal") with the built-in
+        # default - see that helper's docstring for why `or` was wrong here.
+        week_quota_min = _setting_or_default(settings, "weeklyGoalMinHours", WEEK_QUOTA_MIN_HOURS)
+        week_quota_max = _setting_or_default(settings, "weeklyGoalMaxHours", WEEK_QUOTA_MAX_HOURS)
+        month_quota_min = _setting_or_default(settings, "monthlyGoalMinHours", MONTH_QUOTA_MIN_HOURS)
+        month_quota_max = _setting_or_default(settings, "monthlyGoalMaxHours", MONTH_QUOTA_MAX_HOURS)
 
         forecast_date, forecast_recent_weekly_hours = _calc_forecast(
             courses, history, ects_earned, ects_total, today, now, week_quota_min, week_quota_max
