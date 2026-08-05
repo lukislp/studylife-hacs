@@ -1,3 +1,15 @@
+# [1.3.0](https://github.com/lukislp/studylife-hacs/compare/v1.2.1...v1.3.0) (2026-08-05)
+
+
+### Bug Fixes
+
+* mark generate_coverage_badge.py executable ([0a5f950](https://github.com/lukislp/studylife-hacs/commit/0a5f950e3c28220a45c4c95cc6f461fad3da3be8))
+
+
+### Features
+
+* add a self-hosted test coverage badge ([754bc3c](https://github.com/lukislp/studylife-hacs/commit/754bc3cc94ac3d9ed4f4aa0a6088aaa805f12bb5))
+
 ## [1.2.1](https://github.com/lukislp/studylife-hacs/compare/v1.2.0...v1.2.1) (2026-08-05)
 
 
