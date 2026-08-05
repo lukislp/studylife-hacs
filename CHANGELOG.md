@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/lukislp/studylife-hacs/compare/v1.1.0...v1.1.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* don't override explicit zero quota goals with built-in defaults ([49dd655](https://github.com/lukislp/studylife-hacs/commit/49dd655baf43b081f99d0cd21619f212ce8fa6fa))
+
 # [1.1.0](https://github.com/lukislp/studylife-hacs/compare/v1.0.0...v1.1.0) (2026-08-04)
 
 
