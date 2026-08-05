@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/lukislp/studylife-hacs/compare/v1.3.1...v1.3.2) (2026-08-05)
+
+
+### Bug Fixes
+
+* apply the full monthly goal instead of the elapsed-weeks proration ([599f295](https://github.com/lukislp/studylife-hacs/commit/599f29519ad1e6fba393a2ad2ad26c0da205a23a))
+
 ## [1.3.1](https://github.com/lukislp/studylife-hacs/compare/v1.3.0...v1.3.1) (2026-08-05)
 
 
