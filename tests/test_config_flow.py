@@ -12,6 +12,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.studylife.api import StudyLifeApiAuthError, StudyLifeApiError
+from custom_components.studylife.config_flow import _normalize_url
 from custom_components.studylife.const import CONF_SCAN_INTERVAL, DOMAIN
 
 from .conftest import TEST_API_KEY, TEST_URL
@@ -88,6 +89,13 @@ async def test_user_step_duplicate_url_aborts(
 
     assert result2["type"] == FlowResultType.ABORT
     assert result2["reason"] == "already_configured"
+
+
+def test_normalize_url_prepends_http_for_bare_hostname() -> None:
+    """A URL without a scheme (e.g. just typed as a hostname:port) defaults to http://."""
+    assert _normalize_url("studylife.local:5000") == "http://studylife.local:5000"
+    assert _normalize_url("https://studylife.example") == "https://studylife.example"
+    assert _normalize_url("http://studylife.example/") == "http://studylife.example"
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +210,43 @@ async def test_reconfigure_new_url_not_taken_succeeds(
     assert result2["type"] == FlowResultType.ABORT
     assert result2["reason"] == "reconfigure_successful"
     assert mock_config_entry.data[CONF_URL] == new_url
+
+
+async def test_reconfigure_invalid_auth_shows_error(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """A bad API key during reconfigure shows an inline error, entry untouched."""
+    mock_config_entry.add_to_hass(hass)
+
+    result = await mock_config_entry.start_reconfigure_flow(hass)
+
+    with patch(PATCH_TARGET, side_effect=StudyLifeApiAuthError("nope")):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_URL: TEST_URL, CONF_API_KEY: "wrong-key"},
+        )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "invalid_auth"}
+    assert mock_config_entry.data[CONF_API_KEY] == TEST_API_KEY
+
+
+async def test_reconfigure_cannot_connect_shows_error(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """An unreachable server during reconfigure shows an inline error."""
+    mock_config_entry.add_to_hass(hass)
+
+    result = await mock_config_entry.start_reconfigure_flow(hass)
+
+    with patch(PATCH_TARGET, side_effect=StudyLifeApiError("boom")):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_URL: "http://unreachable.example:9000", CONF_API_KEY: TEST_API_KEY},
+        )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "cannot_connect"}
 
 
 async def test_reconfigure_url_collision_aborts(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:

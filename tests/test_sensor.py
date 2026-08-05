@@ -20,6 +20,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.studylife.sensor import (
     PROGRAM_SENSOR_DESCRIPTIONS,
     StudyLifeProgramSensor,
+    _excerpt,
+    _resolve_courses,
+    _session_attrs,
 )
 
 from .conftest import (
@@ -258,3 +261,68 @@ def test_program_sensor_returns_none_and_empty_attrs_when_program_data_missing()
         entity = StudyLifeProgramSensor(coordinator, entry, description, "builtin", "Bachelor")
         assert entity.native_value is None, description.key
         assert entity.extra_state_attributes == {}, description.key
+
+
+def test_session_attrs_returns_empty_dict_for_none() -> None:
+    """No active/next session (data.active_session is None) -> no attributes, not a KeyError."""
+    assert _session_attrs(None) == {}
+
+
+def test_session_attrs_returns_full_dict_for_a_real_session() -> None:
+    from datetime import datetime
+
+    from custom_components.studylife.coordinator import StudySession
+
+    session = StudySession(
+        id=42,
+        course_id=7,
+        course_name="Algorithms",
+        course_color="#ff0000",
+        start=datetime(2026, 1, 6, 10, 0),
+        end=datetime(2026, 1, 6, 11, 0),
+        topic="Sorting",
+        notes="bring laptop",
+        is_completed=False,
+        timer_mode_id=1,
+        recurrence_group_id="grp-1",
+    )
+    assert _session_attrs(session) == {
+        "session_id": 42,
+        "course_id": 7,
+        "course_color": "#ff0000",
+        "topic": "Sorting",
+        "notes": "bring laptop",
+        "start_time": "2026-01-06T10:00:00",
+        "end_time": "2026-01-06T11:00:00",
+        "timer_mode_id": 1,
+        "recurrence_group_id": "grp-1",
+    }
+
+
+def test_excerpt_truncates_long_content() -> None:
+    long_content = "x" * 150
+    excerpt = _excerpt(long_content)
+    assert excerpt == "x" * 120 + "…"
+    # Short content is returned verbatim, no ellipsis.
+    assert _excerpt("short") == "short"
+    assert _excerpt(None) is None
+
+
+def test_resolve_courses_returns_empty_list_for_no_course_ids() -> None:
+    catalog = [{"id": 1, "name": "Algorithms", "code": "CS101", "icon": "mdi:code", "color": "#ff0000"}]
+    assert _resolve_courses(None, catalog, {}) == []
+    assert _resolve_courses([], catalog, {}) == []
+
+
+def test_resolve_courses_maps_ids_to_catalog_entries_with_tags() -> None:
+    catalog = [
+        {"id": 1, "name": "Algorithms", "code": "CS101", "icon": "mdi:code", "color": "#ff0000"},
+        {"id": 2, "name": "Databases", "code": "CS102", "icon": "mdi:database", "color": "#00ff00"},
+    ]
+    # Unknown course IDs (e.g. stale selection after a catalog change) are silently skipped,
+    # not a KeyError.
+    result = _resolve_courses([1, 2, 999], catalog, {1: "exam soon"})
+    assert result == [
+        {"id": 1, "name": "Algorithms", "code": "CS101", "icon": "mdi:code", "color": "#ff0000", "tag": "exam soon"},
+        {"id": 2, "name": "Databases", "code": "CS102", "icon": "mdi:database", "color": "#00ff00", "tag": None},
+    ]

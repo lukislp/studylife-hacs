@@ -10,7 +10,7 @@ actually reads (sessions/courses/course_goals/study_programs/settings).
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -18,13 +18,37 @@ import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.studylife.const import DOMAIN
 from custom_components.studylife.coordinator import StudyProgram
-from custom_components.studylife.services import async_register_services
+from custom_components.studylife.services import _to_naive_iso, async_register_services
 
 from .conftest import make_course, make_session
+
+
+def test_to_naive_iso_strips_tzinfo_via_local_conversion() -> None:
+    """A tz-aware datetime is converted to HA's local time, then the tzinfo is dropped -
+    the API expects a naive-local ISO string, not one with a UTC offset suffix.
+
+    dt_util.DEFAULT_TIME_ZONE is process-wide mutable state that other (hass-using)
+    tests in the same run may have already changed - pinned to UTC here and restored
+    after, so this test's expected value doesn't depend on execution order.
+    """
+    original_tz = dt_util.DEFAULT_TIME_ZONE
+    dt_util.set_default_time_zone(dt_util.UTC)
+    try:
+        aware = datetime(2026, 1, 6, 10, 0, tzinfo=timezone(timedelta(hours=2)))
+        result = _to_naive_iso(aware)
+        assert "+" not in result and "Z" not in result
+        # 10:00+02:00 == 08:00 UTC.
+        assert result == "2026-01-06T08:00:00"
+        # Already-naive values pass through untouched.
+        assert _to_naive_iso(datetime(2026, 1, 6, 10, 0)) == "2026-01-06T10:00:00"
+    finally:
+        dt_util.set_default_time_zone(original_tz)
+
 
 # ---------------------------------------------------------------------------
 # Local helpers

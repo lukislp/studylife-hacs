@@ -328,3 +328,11 @@ async def test_etag_cache_is_keyed_per_path(client: StudyLifeApiClient) -> None:
         assert await client.async_get_courses(5) == [{"id": 2}]
         assert await client.async_get_courses() == [{"id": 1}]
         assert await client.async_get_courses(5) == [{"id": 2}]
+
+
+def test_base_url_and_api_key_properties(
+    client: StudyLifeApiClient, client_no_key: StudyLifeApiClient
+) -> None:
+    assert client.base_url == BASE_URL
+    assert client.api_key == API_KEY
+    assert client_no_key.api_key is None
