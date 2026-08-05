@@ -6,7 +6,15 @@
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
 
 Home Assistant custom integration for [StudyLife](https://github.com/lukislp/studylife), a
-self-hosted study organizer (Blazor WASM + ASP.NET Core). Polls the existing REST API (`/api/sessions`, `/api/settings`, `/api/notes`, `/api/coursegoals`, `/api/courses`, `/api/timerstate`, `/api/studyprograms`) and exposes the same metrics as the dashboard and analytics view as entities — including a real course catalog and the live timer phase. Six services also let you create, edit, and delete sessions and course goals, as well as switch the active study programme, directly from Home Assistant — otherwise the integration doesn't change anything in the StudyLife app.
+self-hosted study organizer (Blazor WASM + ASP.NET Core). Polls the existing REST API and
+exposes the same metrics as the dashboard and analytics view as entities — otherwise the
+integration doesn't change anything in the StudyLife app.
+
+- **30+ sensors** covering active/next session, streaks, weekly/monthly quotas, achievements, ECTS progress, grades, and more — mirroring the web dashboard and analytics view
+- **One device per study programme** — every programme (built-in or custom, active or not) gets its own set of progress sensors, all visible at once
+- **Six services** to create/edit/delete sessions and course goals, generate an exam plan, and switch the active study programme — directly from Home Assistant automations
+- **Calendars and a course picker** for sessions and open course goals, plus a `select` entity for the active course
+- **Long-lived API key auth** (one-time setup, no rotation/expiry) and conditional-GET polling (ETags) so unchanged data costs no bandwidth
 
 **Multiple study programmes — one device per programme:** Every study programme (the built-in one plus every custom one you've created, completed or not) gets its **own device** in Home Assistant, `StudyLife — <name>`, with a full set of progress sensors — **all visible at the same time**, regardless of which programme is currently active in the app. On top of that there's a "hub" device `StudyLife` for everything app-global (sessions, timer, notes, calendar, course picker, cross-programme study habit). See [Entities](#entities) for details.
 
