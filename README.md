@@ -4,6 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/lukislp/studylife-hacs)](https://github.com/lukislp/studylife-hacs/releases)
 [![License: MIT](https://img.shields.io/github/license/lukislp/studylife-hacs)](LICENSE)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/lukislp/studylife-hacs/main/.github/badges/coverage.json)](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml)
 
 Home Assistant custom integration for [StudyLife](https://github.com/lukislp/studylife), a
 self-hosted study organizer (Blazor WASM + ASP.NET Core). Polls the existing REST API and

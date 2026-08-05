@@ -2,3 +2,4 @@ pytest-homeassistant-custom-component
 pytest-asyncio
 aioresponses
 freezegun
+pytest-cov

@@ -57,7 +57,15 @@ jobs:
           cache: pip
           cache-dependency-path: requirements_test.txt
       - run: pip install -r requirements_test.txt
-      - run: pytest tests/ -v
+      - run: pytest tests/ -v --cov=custom_components/studylife --cov-report=json:coverage.json
+      # Self-hosted coverage badge (no external service), downloaded and committed by the
+      # semantic-release job below - same pattern as the manifest-version sync.
+      - run: python3 scripts/generate_coverage_badge.py coverage.json coverage-badge.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage-badge
+          path: coverage-badge.json
+          retention-days: 7
 
   # ---------------------------------------------------------------------
   # Version / release — push to main only
@@ -117,6 +125,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+      - uses: actions/download-artifact@v8
+        with:
+          name: coverage-badge
+          path: coverage-artifact
+      - run: mkdir -p .github/badges && mv coverage-artifact/coverage-badge.json .github/badges/coverage.json
       - id: semrel
         uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
         with:
