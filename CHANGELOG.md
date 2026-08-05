@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/lukislp/studylife-hacs/compare/v1.2.0...v1.2.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* lead the README with a concise feature summary before registry details ([092a7da](https://github.com/lukislp/studylife-hacs/commit/092a7da613125bc61d75931c9ba3a76bf954cc9f))
+
 # [1.2.0](https://github.com/lukislp/studylife-hacs/compare/v1.1.3...v1.2.0) (2026-08-05)
 
 
