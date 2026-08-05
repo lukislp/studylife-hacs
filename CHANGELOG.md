@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/lukislp/studylife-hacs/compare/v1.3.0...v1.3.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* trigger a release for the 100% coverage test additions ([ed617f5](https://github.com/lukislp/studylife-hacs/commit/ed617f5479b23b2bcbdd038c5f11b5b34cec48c0))
+
 # [1.3.0](https://github.com/lukislp/studylife-hacs/compare/v1.2.1...v1.3.0) (2026-08-05)
 
 
