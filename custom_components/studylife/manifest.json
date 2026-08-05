@@ -1,7 +1,7 @@
 {
   "domain": "studylife",
   "name": "StudyLife",
-  "codeowners": ["@lkoerber"],
+  "codeowners": ["@lukislp"],
   "config_flow": true,
   "documentation": "https://github.com/lukislp/studylife-hacs",
   "integration_type": "hub",
