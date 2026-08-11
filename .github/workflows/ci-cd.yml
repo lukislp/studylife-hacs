@@ -34,7 +34,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      # Home Assistant Core's own manifest/config-flow/translation validator.
+      # Home Assistant Core's own manifest/config-flow/translation validator - always
+      # referenced by branch, same rationale as hacs/action above: validates against
+      # whatever hassfest's current ruleset is, not a fixed historical pin.
       - uses: home-assistant/actions/hassfest@master
 
   test-lint:
