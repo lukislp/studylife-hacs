@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/lukislp/studylife-hacs/compare/v1.4.0...v1.5.0) (2026-08-26)
+
+
+### Features
+
+* require catalog courses in session and goal services ([2ed8e8f](https://github.com/lukislp/studylife-hacs/commit/2ed8e8fe34148ea47fe19e2e19449f2e86f9bae1)), closes [studylife#86](https://github.com/studylife/issues/86)
+
 # [1.4.0](https://github.com/lukislp/studylife-hacs/compare/v1.3.3...v1.4.0) (2026-08-26)
 
 
