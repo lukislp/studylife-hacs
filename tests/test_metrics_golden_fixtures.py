@@ -19,31 +19,38 @@ on an unreachable/unparsable fixture file (that IS the point of a drift-detectio
 local dev with no override and no internet skips with a clear message, an explicitly
 configured STUDYLIFE_METRICS_FIXTURES that turns out unreachable is a real error and fails.
 
-KNOWN, CONFIRMED DRIFT (not fixed here - see the fixture file's own per-scenario
-"description" fields and the task report for full detail): two scenarios are listed in
-KNOWN_DRIFT_XFAIL below (asserted to currently FAIL, strict-xfail style - see
-test_coordinator_metrics_match_fixture's docstring) because coordinator.py currently,
-genuinely computes different numbers than the real C# app:
+FORMERLY KNOWN DRIFT, NOW FIXED (audit finding D4 - see coordinator.py/api.py for the actual
+fix, and git history for the two scenarios that used to be pinned in KNOWN_DRIFT_XFAIL here):
 
 - "week_quota_future_dated_session_drift": /api/sessions/history has no upper date bound,
   so it can return sessions scheduled arbitrarily far in the future. The real app
-  (Index.razor.cs) bounds its week-hours filter to `< weekStart + 7 days`; coordinator.py's
-  week_hours filter (`s.start.date() >= week_start`, see _async_update_data and
-  _build_program_data) has NO upper bound, so a far-future-dated session inflates "this
-  week's hours" here but not in the app.
+  (Index.razor.cs) bounds its week-hours filter to `>= weekStart && < weekStart + 7 days`;
+  coordinator.py's week_hours filter (`_async_update_data` and `_build_program_data`) now
+  applies the exact same upper bound. month_hours was CHECKED against the same bug class and
+  found to be correct as-is: Index.razor.cs's own month filter (`monthSessions = history.
+  Where(s => s.StartTime.Date >= monthStart)`) has no upper bound either - that's the real,
+  intended C# behavior, not a second instance of this drift, and the fixtures' expected
+  monthHours values were computed against that same unbounded filter. Adding an upper bound
+  to coordinator.py's month filter would therefore make fixtures FAIL, not pass - it was
+  deliberately left alone.
 - "custom_program_group_quota_not_embedded_in_name": coordinator.py's _calc_ects_progress/
-  _group_quota can only recover a custom study programme's elective-group ECTS quota by
-  regex-parsing "(N ECTS)" out of the group's display NAME (courses have no other quota
-  field available over the API) - the real app instead fetches the true, separately
-  DB-configured quota from GET /api/studyprograms/{id} (StudyProgramDetailDto.
-  GroupEctsQuotas). coordinator.py's api.py never calls that endpoint at all, so any custom
-  group whose name doesn't literally embed the "(N ECTS)" convention silently falls back to
-  an uncapped raw sum instead of the true quota.
+  _group_quota now accept an optional `group_quotas` mapping - the AUTHORITATIVE elective-
+  group ECTS quota (GET /api/studyprograms/{id} -> StudyProgramDetailDto.GroupEctsQuotas),
+  which the coordinator fetches once per poll cycle for the currently ACTIVE study programme
+  when it's a custom one (api.py's new `async_get_study_program`). When given, this is used
+  instead of the "(N ECTS)"-in-the-name regex - see _calc_ects_progress's docstring for the
+  built-in-programme/non-active-programme fallback story. This specific golden-fixture
+  scenario models a real DB-configured group quota (5 ECTS for a group named plain
+  "Electives", no "(N ECTS)" substring) that the fixture JSON itself has no field for -
+  session/course/settings-shaped scenario inputs don't carry an out-of-band server-side
+  quota config - so `SCENARIO_GROUP_ECTS_QUOTAS` below hardcodes that one value (taken
+  directly from the scenario's own "description" field in the fixture) as this offline unit
+  test's stand-in for what a live GET /api/studyprograms/{id} would have returned.
 
-If either of these ever starts passing (e.g. coordinator.py gets fixed, or gains a
-studyprograms-detail fetch), the test below turns that into a hard failure too - forcing
-whoever fixes it to also remove the entry from KNOWN_DRIFT_XFAIL, instead of the fix going
-unnoticed.
+KNOWN_DRIFT_XFAIL is now empty (kept, not deleted, as the anchor the block below is written
+against) - if either of the above ever starts failing again (a regression to the old
+behavior), the test below turns that into a hard failure immediately, the same guarantee it
+gave while they were pinned as expected failures.
 """
 from __future__ import annotations
 
@@ -52,7 +59,7 @@ import json
 import os
 import urllib.error
 import urllib.request
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -75,20 +82,21 @@ from ._network_fetch import allow_network_for
 DEFAULT_FIXTURES_URL = "https://raw.githubusercontent.com/lukislp/studylife/main/docs/api/metrics-fixtures.json"
 FIXTURES_HOST = "raw.githubusercontent.com"
 
-# Scenario names with real, currently-confirmed drift from the C# truth - see the module
-# docstring above for the root cause of each. Kept as a set (not skipped/removed from the
-# fixture file) so the drift stays visible and pinned instead of silently disappearing.
-KNOWN_DRIFT_XFAIL: dict[str, str] = {
-    "week_quota_future_dated_session_drift": (
-        "coordinator.py's week_hours filter has no upper date bound (unlike Index.razor.cs) "
-        "- a future-dated session inflates week_hours here. Audit finding D4."
-    ),
-    "custom_program_group_quota_not_embedded_in_name": (
-        "coordinator.py never fetches GET /api/studyprograms/{id} "
-        "(StudyProgramDetailDto.GroupEctsQuotas) - its regex '(N ECTS)' name-parsing fallback "
-        "produces an uncapped ECTS sum for custom groups whose name doesn't embed that "
-        "convention. Audit finding D4."
-    ),
+# Both scenarios this used to pin (week_quota_future_dated_session_drift,
+# custom_program_group_quota_not_embedded_in_name) are fixed now - see the module docstring
+# above. Left empty (not deleted) so a future regression back to either old behavior is
+# caught immediately by the "unexpected_passes"/strict-xfail machinery below turning into a
+# silent "well it's expected to fail" instead of a loud one.
+KNOWN_DRIFT_XFAIL: dict[str, str] = {}
+
+# custom_program_group_quota_not_embedded_in_name's real, DB-configured GroupEctsQuotas
+# (StudyProgramDetailDto.GroupEctsQuotas) - see the module docstring above for why this is
+# hardcoded here instead of read off the fixture: the fixture JSON's scenario shape (settings/
+# sessions/courses/courseGoals/completedCourseIds) has no field for it, since every other
+# scenario needs no such out-of-band, server-side-only config. Value taken verbatim from this
+# scenario's own "description" field in the fixture file.
+SCENARIO_GROUP_ECTS_QUOTAS: dict[str, dict[str, int]] = {
+    "custom_program_group_quota_not_embedded_in_name": {"Electives": 5},
 }
 
 
@@ -159,12 +167,14 @@ def _run_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
     courses = scenario["courses"]
     course_goals = scenario["courseGoals"]
 
-    # Mirrors _async_update_data's week/month hours filters EXACTLY (including the missing
-    # upper bound on week_hours - that's the real, current coordinator.py behavior being
-    # tested here, not a "corrected" version of it).
+    # Mirrors _async_update_data's week/month hours filters EXACTLY, including week_hours'
+    # upper bound (`< week_start + 7 days`, audit finding D4 fix) AND month_hours staying
+    # deliberately unbounded (checked against the real C# app and confirmed correct as-is -
+    # see the module docstring and coordinator.py's own comment on month_sessions).
     week_start = _week_start(today)
+    week_end = week_start + timedelta(days=7)
     week_hours = sum(
-        s.duration_minutes for s in sessions if s.start.date() >= week_start
+        s.duration_minutes for s in sessions if week_start <= s.start.date() < week_end
     ) / 60.0
     month_start = today.replace(day=1)
     month_hours = sum(
@@ -184,7 +194,8 @@ def _run_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
     )
 
     average_grade = _calc_average_grade(course_goals, courses)
-    ects_earned, ects_total = _calc_ects_progress(courses, settings)
+    group_quotas = SCENARIO_GROUP_ECTS_QUOTAS.get(scenario["name"])
+    ects_earned, ects_total = _calc_ects_progress(courses, settings, group_quotas)
 
     forecast_date, recent_weekly_hours = _calc_forecast(
         courses, sessions, ects_earned, ects_total, today, now,
@@ -263,11 +274,12 @@ def test_coordinator_metrics_match_fixture(fixtures: dict[str, Any]) -> None:
 
     Failures for every scenario are collected and reported together (one assertion at the
     end lists every mismatch by name) instead of stopping at the first one, so a single test
-    run surfaces the full picture. The two KNOWN_DRIFT_XFAIL scenarios are asserted to
-    currently FAIL (`strict=True`-equivalent: if one of them starts passing, e.g. because
-    coordinator.py got fixed, that is ALSO reported as a failure here, so the entry has to be
-    removed from KNOWN_DRIFT_XFAIL by whoever fixes it - the same guarantee `pytest.mark.
-    xfail(strict=True)` would give a per-scenario parametrized test)."""
+    run surfaces the full picture. Any scenario named as a key in KNOWN_DRIFT_XFAIL (currently
+    empty - see the module docstring for the two entries that used to live there and how they
+    got fixed) is asserted to currently FAIL (`strict=True`-equivalent: if one of them starts
+    passing, that is ALSO reported as a failure here, so the entry has to be removed from
+    KNOWN_DRIFT_XFAIL by whoever fixes it - the same guarantee `pytest.mark.xfail(strict=True)`
+    would give a per-scenario parametrized test)."""
     unexpected_failures: list[str] = []
     unexpected_passes: list[str] = []
 

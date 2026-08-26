@@ -49,6 +49,7 @@ CALLED_ENDPOINTS: list[tuple[str, str]] = [
     ("PUT", "/api/coursegoals/{courseId}"),  # async_set_course_goal()
     ("GET", "/api/courses"),  # async_get_courses()
     ("GET", "/api/studyprograms"),  # async_get_study_programs()
+    ("GET", "/api/studyprograms/{id}"),  # async_get_study_program()
     ("GET", "/api/timerstate"),  # async_get_timer_state()
     ("POST", "/api/planner/exam-plan"),  # async_generate_exam_plan()
 ]

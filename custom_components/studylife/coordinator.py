@@ -523,15 +523,37 @@ def _calc_average_grade(
 
 
 def _calc_ects_progress(
-    courses: list[dict[str, Any]], settings: dict[str, Any]
+    courses: list[dict[str, Any]],
+    settings: dict[str, Any],
+    group_quotas: dict[str, int] | None = None,
 ) -> tuple[int, int]:
     """Mirrors CourseCatalog.CalcTotalEcts / CalcEctsEarned in StudyLife.Shared:
 
-    - ects_total  = sum of ungrouped course ECTS + sum of per-group quotas
-                    (group quota is parsed from the group name, e.g.
-                    "Wahlpflichtmodule A (5 ECTS)" → 5).  Result: 180 ECTS.
+    - ects_total  = sum of ungrouped course ECTS + sum of per-group quotas.
     - ects_earned = ungrouped completed ECTS
                     + per-group min(completed ECTS in group, group quota).
+
+    `group_quotas`: the AUTHORITATIVE group name -> ECTS quota mapping (GET
+    /api/studyprograms/{id} -> StudyProgramDetailDto.GroupEctsQuotas, a
+    separate DB-configured field, never embedded in the group's display
+    name), passed by the coordinator only for the currently ACTIVE study
+    programme when it's a custom one - see `_async_update_data`. The real app
+    (Stats.Programs.razor.cs) never regex-parses a group name for either
+    programme kind: the built-in catalog passes its own static
+    CourseCatalog.GroupEctsQuotas dict, a custom one always fetches this same
+    detail endpoint. There is no equivalent static dict available here for the
+    built-in catalog (HA only ever sees it over the API), so when
+    `group_quotas` is None (built-in programme, a non-active custom
+    programme, or an as-yet-unfetched/failed detail) this still falls back to
+    parsing "(N ECTS)" out of the group name, e.g. "Wahlpflichtmodule A (5
+    ECTS)" -> 5 - which happens to reproduce the built-in catalog's real
+    quotas exactly (its group names were written with that convention), but
+    is otherwise a HA-side approximation, not something the real app does.
+    When `group_quotas` IS given, the endpoint is authoritative and the regex
+    is not consulted at all - a group missing from the response (shouldn't
+    normally happen; the server only lets a course reference a group that
+    exists) falls back to an uncapped raw member sum, same shape as an
+    unmatched name would produce.
     """
     completed_ids = set(settings.get("completedCourseIds") or [])
 
@@ -543,6 +565,8 @@ def _calc_ects_progress(
             grouped_by_name.setdefault(g, []).append(c)
 
     def _group_quota(group_name: str, members: list[dict[str, Any]]) -> int:
+        if group_quotas is not None:
+            return group_quotas.get(group_name, sum(c.get("ects", 5) for c in members))
         m = re.search(r"\((\d+)\s*ECTS\)", group_name)
         return int(m.group(1)) if m else sum(c.get("ects", 5) for c in members)
 
@@ -798,26 +822,37 @@ def _build_program_data(
     week_quota_max: float,
     month_quota_min: float,
     month_quota_max: float,
+    group_quotas: dict[str, int] | None = None,
 ) -> StudyLifeProgramData:
     """One programme's stats, computed from the SHARED global fetches: sessions
     and course goals are partitioned by this programme's course-id set (course
     ids are globally unique across programmes), only `courses` comes from a
     programme-specific request. Reuses the exact same _calc_* helpers as the
-    active-programme fields on StudyLifeData - same math, narrower inputs."""
+    active-programme fields on StudyLifeData - same math, narrower inputs.
+
+    `group_quotas`: forwarded as-is to `_calc_ects_progress` - see that
+    function's docstring. Only ever non-None for the currently ACTIVE
+    programme when it's a custom one (`_async_update_data` fetches its detail
+    exactly once per poll cycle); every other programme in the per-programme
+    `programs` loop passes None and keeps the regex/name-based fallback."""
     course_ids = {c["id"] for c in courses}
     course_goals = [g for g in all_course_goals if g["courseId"] in course_ids]
     prog_history = [s for s in history if s.course_id in course_ids]
     # Same studied-semantics as everywhere else: timer-completed OR end passed.
     prog_completed = [s for s in prog_history if s.is_completed or s.end <= now]
 
+    # Same upper bound as _async_update_data's own week_sessions/week_hours (audit
+    # finding D4) - month_hours stays deliberately unbounded, see that function's
+    # comment on month_sessions for why that's correct, not a second drift instance.
+    week_end = week_start + timedelta(days=7)
     week_hours = sum(
-        s.duration_minutes for s in prog_history if s.start.date() >= week_start
+        s.duration_minutes for s in prog_history if week_start <= s.start.date() < week_end
     ) / 60.0
     month_hours = sum(
         s.duration_minutes for s in prog_history if s.start.date() >= month_start
     ) / 60.0
 
-    ects_earned, ects_total = _calc_ects_progress(courses, settings)
+    ects_earned, ects_total = _calc_ects_progress(courses, settings, group_quotas)
     upcoming_course_goals = _calc_upcoming_course_goals(course_goals, today)
     forecast_date, forecast_recent_weekly_hours = _calc_forecast(
         courses, prog_history, ects_earned, ects_total, today, now,
@@ -880,6 +915,27 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
                 raw_courses_by_key[program_key(pid)] = await self._client.async_get_courses(
                     pid if pid is not None else 0
                 )
+
+            # AUTHORITATIVE elective-group ECTS quotas (StudyProgramDetailDto.
+            # GroupEctsQuotas) for the ACTIVE study programme, but only when it's a
+            # CUSTOM one - audit finding D4. The built-in entry's id is None/0 and has
+            # no /api/studyprograms/{id} route at all (GetAll's synthetic first entry
+            # has no DB row), so it keeps its regex/name-based fallback unconditionally
+            # (see _calc_ects_progress). The `any(...)` guard mirrors the "stale/unknown
+            # id" defensiveness of the active_study_program fallback below: without it,
+            # an ActiveStudyProgramId left pointing at a just-deleted custom programme
+            # would 404 here and fail the WHOLE refresh, instead of silently falling
+            # back to the built-in programme like every other consumer of this id does.
+            # Every OTHER custom programme (the per-programme `programs` loop below)
+            # deliberately does NOT get this extra fetch - one more request per custom
+            # programme every poll cycle, for stats most users never look at, isn't
+            # worth it; they keep the same regex fallback the built-in path always used.
+            active_program_id = settings.get("activeStudyProgramId")
+            raw_study_program_detail: dict[str, Any] | None = None
+            if active_program_id is not None and any(
+                p.get("id") == active_program_id for p in raw_study_programs
+            ):
+                raw_study_program_detail = await self._client.async_get_study_program(active_program_id)
         except StudyLifeApiAuthError as err:
             # Genuine 401: both current and previous key rejected - normally only possible
             # when HA was offline longer than the 10-day grace window of a key rotation.
@@ -891,7 +947,9 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
             raise UpdateFailed(str(err)) from err
 
         study_programs = [_to_study_program(p) for p in raw_study_programs]
-        active_program_id = settings.get("activeStudyProgramId")
+        # active_program_id was already computed inside the try block above (needed
+        # there to decide whether to fetch the studyprograms detail endpoint) - reused
+        # as-is, not recomputed.
         active_study_program = next(
             (p for p in study_programs if p.id == active_program_id),
             # Defensive fallback (e.g. stale/unknown id): the built-in entry is always
@@ -942,8 +1000,15 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
         )
 
         week_start = _week_start(today)
+        # Upper-bounded to `< week_start + 7 days`, mirroring Index.razor.cs's own
+        # `weekSessions = history.Where(s => s.StartTime.Date >= weekStart &&
+        # s.StartTime.Date < weekEnd)` exactly (audit finding D4). /api/sessions/history
+        # has no upper date bound server-side (SessionsController.GetHistory), so without
+        # this an arbitrarily-far-future-dated session (e.g. scheduled next month) would
+        # inflate "this week's hours"/week_sessions forever, not just until the week ends.
+        week_end = week_start + timedelta(days=7)
         week_sessions = sorted(
-            (s for s in history if s.start.date() >= week_start), key=lambda s: s.start
+            (s for s in history if week_start <= s.start.date() < week_end), key=lambda s: s.start
         )
         week_minutes = sum(s.duration_minutes for s in week_sessions)
         week_hours = week_minutes / 60.0
@@ -955,6 +1020,14 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
         )
         previous_week_hours = previous_week_minutes / 60.0
 
+        # Deliberately NOT upper-bounded, unlike week_sessions above - checked against
+        # Index.razor.cs (`monthSessions = history.Where(s => s.StartTime.Date >=
+        # monthStart)`, no `< monthEnd` anywhere) and confirmed the real app's month
+        # filter has the exact same "no upper bound" shape. That's not the D4 bug for
+        # month, it's the actual, intended (if perhaps surprising) C# behavior, so
+        # matching it here is correct, not a second instance of the drift - the golden
+        # fixtures' expected monthHours values were computed against this same unbounded
+        # C# filter and would themselves start failing if an upper bound were added here.
         month_start = today.replace(day=1)
         month_sessions = [s for s in history if s.start.date() >= month_start]
         month_minutes = sum(s.duration_minutes for s in month_sessions)
@@ -969,8 +1042,16 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
         notes = [n for n in raw_notes if not n.get("courseId") or n["courseId"] in active_course_ids]
         latest_note = notes[0] if notes else None
 
+        # None unless the active programme is a custom one whose detail fetch above
+        # succeeded - see the try block and _calc_ects_progress's docstring.
+        active_group_quotas: dict[str, int] | None = (
+            raw_study_program_detail.get("groupEctsQuotas") or {}
+            if raw_study_program_detail is not None
+            else None
+        )
+
         course_hours = _calc_course_hours(sessions, now)
-        ects_earned, ects_total = _calc_ects_progress(courses, settings)
+        ects_earned, ects_total = _calc_ects_progress(courses, settings, active_group_quotas)
         upcoming_course_goals = _calc_upcoming_course_goals(course_goals, today)
         neglected_course = _calc_neglected_course(
             settings, courses,
@@ -1026,9 +1107,10 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
         programs: dict[str, StudyLifeProgramData] = {}
         for program in study_programs:
             key = program_key(program.id)
+            is_active = program.id == active_study_program.id
             programs[key] = _build_program_data(
                 program=program,
-                is_active=program.id == active_study_program.id,
+                is_active=is_active,
                 courses=raw_courses_by_key.get(key, []),
                 all_course_goals=raw_course_goals,
                 history=history,
@@ -1041,6 +1123,10 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
                 week_quota_max=week_quota_max,
                 month_quota_min=month_quota_min,
                 month_quota_max=month_quota_max,
+                # Only the active programme ever has fetched, authoritative quotas
+                # (see active_group_quotas above) - every other one keeps the regex
+                # fallback inside _calc_ects_progress.
+                group_quotas=active_group_quotas if is_active else None,
             )
 
         weekly_report = _calc_weekly_report(history, today)
