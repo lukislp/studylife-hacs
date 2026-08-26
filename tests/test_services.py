@@ -131,9 +131,12 @@ async def test_create_session_success(hass: HomeAssistant, mock_config_entry: Mo
     coordinator.async_request_refresh.assert_awaited_once()
 
 
-async def test_create_session_explicit_name_and_color_override_catalog(
+async def test_create_session_course_name_and_color_are_ignored(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ) -> None:
+    """course_name/course_color are deprecated - the server derives them from the
+    catalog and rejects client-supplied values, so the payload must always carry
+    the catalog-resolved values regardless of what the caller passes."""
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
     course = make_course(id=100, name="Algorithms", color="#ff0000")
@@ -155,15 +158,16 @@ async def test_create_session_explicit_name_and_color_override_catalog(
     )
 
     payload = client.async_create_session.call_args.args[0]
-    assert payload["courseName"] == "Custom Name"
-    assert payload["courseColor"] == "#123456"
+    assert payload["courseName"] == "Algorithms"
+    assert payload["courseColor"] == "#ff0000"
 
 
 async def test_create_session_course_not_in_catalog(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ) -> None:
     mock_config_entry.add_to_hass(hass)
-    coordinator = make_coordinator(data=make_coordinator_data(courses=[]))
+    client = AsyncMock()
+    coordinator = make_coordinator(client=client, data=make_coordinator_data(courses=[]))
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
@@ -180,6 +184,7 @@ async def test_create_session_course_not_in_catalog(
         )
 
     assert exc_info.value.translation_key == "course_not_in_catalog"
+    client.async_create_session.assert_not_awaited()
     coordinator.async_request_refresh.assert_not_awaited()
 
 
@@ -259,6 +264,68 @@ async def test_update_session_changing_course_resolves_from_catalog(
     assert payload["courseColor"] == "#00ff00"
 
 
+async def test_update_session_changing_course_ignores_supplied_name_and_color(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """Even when changing the course, a caller-supplied course_name/course_color
+    must be ignored in favor of the catalog-resolved values (deprecated fields)."""
+    mock_config_entry.add_to_hass(hass)
+    client = AsyncMock()
+    existing = make_session(id=5, course_id=100, course_name="Algorithms", course_color="#ff0000")
+    new_course = make_course(id=200, name="Databases", color="#00ff00")
+    coordinator = make_coordinator(
+        client=client,
+        data=make_coordinator_data(sessions=[existing], courses=[new_course]),
+    )
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
+    await _register(hass)
+
+    await hass.services.async_call(
+        DOMAIN,
+        "update_session",
+        {
+            "session_id": 5,
+            "course_id": 200,
+            "course_name": "Custom Name",
+            "course_color": "#123456",
+        },
+        blocking=True,
+    )
+
+    payload = client.async_update_session.call_args.args[1]
+    assert payload["courseId"] == 200
+    assert payload["courseName"] == "Databases"
+    assert payload["courseColor"] == "#00ff00"
+
+
+async def test_update_session_unknown_course_id_raises_without_api_call(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """Changing to a course_id that isn't in the catalog must raise course_not_in_catalog
+    and never reach the API - the server would reject it with its own 400 anyway."""
+    mock_config_entry.add_to_hass(hass)
+    client = AsyncMock()
+    existing = make_session(id=5, course_id=100, course_name="Algorithms", course_color="#ff0000")
+    coordinator = make_coordinator(
+        client=client,
+        data=make_coordinator_data(sessions=[existing], courses=[]),
+    )
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
+    await _register(hass)
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN,
+            "update_session",
+            {"session_id": 5, "course_id": 999},
+            blocking=True,
+        )
+
+    assert exc_info.value.translation_key == "course_not_in_catalog"
+    client.async_update_session.assert_not_awaited()
+    coordinator.async_request_refresh.assert_not_awaited()
+
+
 async def test_update_session_not_found(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
     mock_config_entry.add_to_hass(hass)
     coordinator = make_coordinator(data=make_coordinator_data(sessions=[]))
@@ -330,11 +397,37 @@ async def test_set_course_goal_success_resolves_name_from_catalog(
     coordinator.async_request_refresh.assert_awaited_once()
 
 
+async def test_set_course_goal_course_name_is_ignored(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """course_name is deprecated - the server derives it from the catalog, so a
+    caller-supplied value must never end up in the payload."""
+    mock_config_entry.add_to_hass(hass)
+    client = AsyncMock()
+    course = make_course(id=100, name="Algorithms")
+    coordinator = make_coordinator(
+        client=client, data=make_coordinator_data(courses=[course], course_goals=[])
+    )
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
+    await _register(hass)
+
+    await hass.services.async_call(
+        DOMAIN,
+        "set_course_goal",
+        {"course_id": 100, "course_name": "Custom Name", "target_date": "2026-06-15"},
+        blocking=True,
+    )
+
+    payload = client.async_set_course_goal.call_args.args[1]
+    assert payload["courseName"] == "Algorithms"
+
+
 async def test_set_course_goal_course_not_in_catalog(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ) -> None:
     mock_config_entry.add_to_hass(hass)
-    coordinator = make_coordinator(data=make_coordinator_data(courses=[], course_goals=[]))
+    client = AsyncMock()
+    coordinator = make_coordinator(client=client, data=make_coordinator_data(courses=[], course_goals=[]))
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
@@ -344,6 +437,32 @@ async def test_set_course_goal_course_not_in_catalog(
         )
 
     assert exc_info.value.translation_key == "course_not_in_catalog"
+    client.async_set_course_goal.assert_not_awaited()
+    coordinator.async_request_refresh.assert_not_awaited()
+
+
+async def test_set_course_goal_course_not_in_catalog_even_with_existing_goal(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """Previously, an existing goal's stored courseName let set_course_goal fall back
+    to it even for a course_id no longer in the catalog. The server now requires the
+    course to resolve every time, so that fallback path must be gone too."""
+    mock_config_entry.add_to_hass(hass)
+    client = AsyncMock()
+    existing_goal = {"courseId": 999, "courseName": "Stale Course", "grade": 2.0}
+    coordinator = make_coordinator(
+        client=client, data=make_coordinator_data(courses=[], course_goals=[existing_goal])
+    )
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
+    await _register(hass)
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN, "set_course_goal", {"course_id": 999, "grade": 1.5}, blocking=True
+        )
+
+    assert exc_info.value.translation_key == "course_not_in_catalog"
+    client.async_set_course_goal.assert_not_awaited()
     coordinator.async_request_refresh.assert_not_awaited()
 
 

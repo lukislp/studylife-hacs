@@ -26,6 +26,7 @@ integration doesn't change anything in the StudyLife app.
 ## Requirements
 
 - **StudyLife server v1.44.0 or later.** Every metric this integration exposes (streak, week/month quota, ECTS progress, average grade, forecast, course hours, neglected course, weekly report, topics, month comparison, achievements) is computed server-side and served pre-computed by `GET /api/metrics/summary` and `GET /api/metrics/achievements` — endpoints introduced in that release. An older server doesn't have them: the integration fails the refresh loudly with a clear "update your StudyLife server" message (a Home Assistant repair/`UpdateFailed` notification quoting the missing endpoint) rather than crashing or silently showing stale/wrong numbers. **Deploy order matters:** update the StudyLife server *before* updating this integration — the server release must be live first.
+- **StudyLife server with CourseId validation (first release containing [studylife#86](https://github.com/lukislp/studylife/pull/86)) or later.** Since that release, the server validates every `CourseId` on session/goal writes against your course catalog (built-in + custom courses) and derives `courseName`/`courseColor` itself — an unknown `course_id` is rejected with `400 CourseId {id} does not exist.` regardless of what `course_name`/`course_color` are sent. This integration mirrors that: `create_session`/`update_session`/`set_course_goal` now require the course to resolve via the catalog *before* calling the API (see [Services](#services)).
 
 ## Installation
 
@@ -107,14 +108,14 @@ In addition to the sensor, the coordinator fires the bus event **`studylife_week
 
 | Service | Purpose | Fields |
 |---|---|---|
-| `studylife.create_session` | Creates a new session (`POST /api/sessions`) | `course_id` (required), `course_name`, `course_color`, `start_time`, `end_time` (required), `topic`, `notes`, `timer_mode_id` |
+| `studylife.create_session` | Creates a new session (`POST /api/sessions`) | `course_id` (required, must exist in the catalog), `course_name`/`course_color` (deprecated, ignored), `start_time`, `end_time` (required), `topic`, `notes`, `timer_mode_id` |
 | `studylife.update_session` | Changes individual fields of an existing session (`PUT /api/sessions/{id}`) | `session_id` (required), all other fields optional — fields not specified remain unchanged (the server always expects the full DTO, though, so the integration first loads the current state from the coordinator cache and merges in only the fields provided) |
 | `studylife.delete_session` | Deletes a session by its ID (`DELETE /api/sessions/{id}`) | `session_id` (required) |
-| `studylife.set_course_goal` | Creates or updates the target date/grade/completion note for a course (`PUT /api/coursegoals/{courseId}`) | `course_id` (required), `course_name`, `target_date`, `grade`, `completion_note` — as with `update_session`, fields not specified are preserved (merged against the last-polled state) |
+| `studylife.set_course_goal` | Creates or updates the target date/grade/completion note for a course (`PUT /api/coursegoals/{courseId}`) | `course_id` (required, must exist in the catalog), `course_name` (deprecated, ignored), `target_date`, `grade`, `completion_note` — as with `update_session`, fields not specified are preserved (merged against the last-polled state) |
 | `studylife.generate_exam_plan` | Automatically distributes a course's still-open topics as study sessions across free calendar slots up to the exam date (`POST /api/planner/exam-plan`) — server-side equivalent of the exam planner on the web app's Planner page, creates the sessions directly (no confirmation step) | `course_id` (required), `exam_date` (required), `session_length_minutes` (default 90), `total_hours` (default: automatically estimated from open topics) |
 | `studylife.set_active_program` | Switches the study programme active in the **app** (`PUT /api/settings`, field `activeStudyProgramId`). In HA, all study programme devices remain visible unaffected by this — only the course picker, course goal calendar, and the hub device's resolved course lists follow it | `program_id` (optional; ID of a study programme from `sensor.studylife_active_program`, attribute `programs`; omitted = back to the built-in study programme) |
 
-**`course_name`/`course_color` are now optional:** if only `course_id` is given, the integration automatically resolves the name and color via the course catalog (`/api/courses`) — handy in combination with `select.studylife_active_course` (see above), whose `course_id` attribute can be plugged in directly without having to look up or type the course name yourself. If the `course_id` isn't known in the catalog, `course_name` must still be given explicitly (otherwise an error occurs).
+**`course_name`/`course_color` are deprecated and ignored:** the course's name and color are always resolved server-side from your course catalog (built-in or custom courses), so only `course_id` needs to be given — handy in combination with `select.studylife_active_course` (see above), whose `course_id` attribute can be plugged in directly without having to look up or type the course name yourself. The `course_id` **must** exist in the catalog (`/api/courses`) — create the course in the app first (built-in catalog or your own custom course) if it doesn't yet; an unknown `course_id` is rejected with an error, and `course_name`/`course_color` are still accepted for backward compatibility with older automations but no longer have any effect (the fields remain in the service schema only so those automations don't fail validation).
 
 All six services immediately update the sensors/calendar afterward (no waiting for the next poll cycle). The session ID for `update_session`/`delete_session` is available as the `session_id` attribute on `sensor.studylife_active_session`, `sensor.studylife_next_session`, and in the `sessions` list of `sensor.studylife_today_sessions`, as well as `uid` on the respective calendar entry. If only one StudyLife server is configured, `device_id` can be omitted; with multiple servers, the target device must be specified (Developer Tools → Services → select target device).
 
@@ -123,8 +124,7 @@ Example automations (service calls via YAML):
 ```yaml
 action: studylife.create_session
 data:
-  course_id: 13
-  course_name: "Neuronale Netze und Deep Learning"
+  course_id: 13   # must exist in your course catalog (built-in or custom); name/color are resolved server-side
   start_time: "2026-07-15 18:00:00"
   end_time: "2026-07-15 19:30:00"
   topic: "Backpropagation"
@@ -140,8 +140,7 @@ data:
 ```yaml
 action: studylife.set_course_goal
 data:
-  course_id: 13
-  course_name: "Neuronale Netze und Deep Learning"
+  course_id: 13   # must exist in your course catalog (built-in or custom); name is resolved server-side
   target_date: "2026-09-30"
 ```
 
@@ -167,7 +166,7 @@ data:
   start_time: "2026-07-15 18:00:00"
   end_time: "2026-07-15 19:30:00"
   topic: "Backpropagation"
-  # course_name/course_color are resolved automatically from the course catalog
+  # course_name/course_color are always resolved server-side from the course catalog
 ```
 
 ## Known limitations

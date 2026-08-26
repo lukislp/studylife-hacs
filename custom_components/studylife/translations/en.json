@@ -109,9 +109,9 @@
       "description": "Creates a new study session in StudyLife.",
       "fields": {
         "device_id": { "name": "Device", "description": "Only needed if multiple StudyLife servers are configured." },
-        "course_id": { "name": "Course ID", "description": "Numeric ID of the course." },
-        "course_name": { "name": "Course name", "description": "Display name of the course." },
-        "course_color": { "name": "Course color", "description": "Hex color, e.g. #6C5CE7." },
+        "course_id": { "name": "Course ID", "description": "Numeric ID of the course. Must exist in your course catalog (built-in or custom)." },
+        "course_name": { "name": "Course name (deprecated)", "description": "Deprecated, ignored. The server now derives the course name from the catalog." },
+        "course_color": { "name": "Course color (deprecated)", "description": "Deprecated, ignored. The server now derives the course color from the catalog." },
         "start_time": { "name": "Start", "description": "Start of the study session." },
         "end_time": { "name": "End", "description": "End of the study session." },
         "topic": { "name": "Topic", "description": "Optional topic for the session." },
@@ -125,9 +125,9 @@
       "fields": {
         "device_id": { "name": "Device", "description": "Only needed if multiple StudyLife servers are configured." },
         "session_id": { "name": "Session ID", "description": "ID of the session to edit." },
-        "course_id": { "name": "Course ID", "description": "Numeric ID of the course." },
-        "course_name": { "name": "Course name", "description": "Display name of the course." },
-        "course_color": { "name": "Course color", "description": "Hex color, e.g. #6C5CE7." },
+        "course_id": { "name": "Course ID", "description": "Numeric ID of the course. Must exist in your course catalog (built-in or custom) if changing the session's course." },
+        "course_name": { "name": "Course name (deprecated)", "description": "Deprecated, ignored. The server now derives the course name from the catalog." },
+        "course_color": { "name": "Course color (deprecated)", "description": "Deprecated, ignored. The server now derives the course color from the catalog." },
         "start_time": { "name": "Start", "description": "New start of the study session." },
         "end_time": { "name": "End", "description": "New end of the study session." },
         "topic": { "name": "Topic", "description": "Topic of the session." },
@@ -149,8 +149,8 @@
       "description": "Creates or updates the target date, grade and/or completion note for a course.",
       "fields": {
         "device_id": { "name": "Device", "description": "Only needed if multiple StudyLife servers are configured." },
-        "course_id": { "name": "Course ID", "description": "Numeric ID of the course." },
-        "course_name": { "name": "Course name", "description": "Display name of the course." },
+        "course_id": { "name": "Course ID", "description": "Numeric ID of the course. Must exist in your course catalog (built-in or custom)." },
+        "course_name": { "name": "Course name (deprecated)", "description": "Deprecated, ignored. The server now derives the course name from the catalog." },
         "target_date": { "name": "Target date", "description": "Desired completion date." },
         "grade": { "name": "Grade", "description": "Final grade, e.g. 1.3." },
         "completion_note": { "name": "Completion note", "description": "Freeform note about finishing the course." }
@@ -181,7 +181,7 @@
     "unknown_device": { "message": "Unknown device: {device_id}" },
     "device_not_studylife": { "message": "This device does not belong to any StudyLife integration." },
     "multiple_servers_need_device_id": { "message": "Multiple StudyLife servers configured - please specify device_id in the service call." },
-    "course_not_in_catalog": { "message": "Course ID {course_id} is not in the catalog (/api/courses) - course_name must be provided." },
+    "course_not_in_catalog": { "message": "Course ID {course_id} does not exist. It must be a course from your StudyLife catalog (built-in or custom, see /api/courses) - the server no longer accepts an unknown course_id with a manually supplied course_name." },
     "session_not_found": { "message": "Session {session_id} was not found." },
     "unknown_program": { "message": "Programme ID {program_id} is not known (sensor.studylife_active_program, attribute 'programs')." }
   }
