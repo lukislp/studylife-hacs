@@ -516,6 +516,67 @@ def test_calc_ects_progress_mixes_ungrouped_and_grouped() -> None:
 
 
 # ---------------------------------------------------------------------------
+# _calc_ects_progress - group_quotas (audit finding D4: GET /api/studyprograms/{id}
+# -> StudyProgramDetailDto.GroupEctsQuotas, the authoritative source for a custom study
+# programme's elective-group quota, instead of regex-parsing "(N ECTS)" out of the name)
+# ---------------------------------------------------------------------------
+
+
+def test_calc_ects_progress_group_quotas_used_when_name_has_no_pattern() -> None:
+    """The exact bug this scenario reproduces: a group named plain "Electives" (no
+    "(N ECTS)" substring) with a real, separately-configured 5-ECTS quota. Without
+    group_quotas this falls back to an uncapped raw sum (7); with it, it's capped
+    correctly - same shape as the golden-fixture scenario this mirrors."""
+    courses = [
+        make_course(id=20, ects=3, group="Electives"),
+        make_course(id=21, ects=4, group="Electives"),
+    ]
+    settings = {"completedCourseIds": [20, 21]}
+
+    earned, total = _calc_ects_progress(courses, settings, group_quotas={"Electives": 5})
+    assert total == 5
+    assert earned == 5  # capped, not 3+4=7
+
+    # Confirms the OLD (still-supported) fallback path really is what produces the bug -
+    # group_quotas omitted entirely.
+    earned_fallback, total_fallback = _calc_ects_progress(courses, settings)
+    assert total_fallback == 7
+    assert earned_fallback == 7
+
+
+def test_calc_ects_progress_group_quotas_takes_priority_over_embedded_name() -> None:
+    """When group_quotas is given at all, it's used exclusively - no regex fallback,
+    even for a name that WOULD parse. The authoritative value (10) wins over both the
+    name-embedded one (5) and the raw member sum (7)."""
+    courses = [
+        make_course(id=10, ects=3, group="Wahlpflicht (5 ECTS)"),
+        make_course(id=11, ects=4, group="Wahlpflicht (5 ECTS)"),
+    ]
+    settings = {"completedCourseIds": [10, 11]}
+
+    earned, total = _calc_ects_progress(
+        courses, settings, group_quotas={"Wahlpflicht (5 ECTS)": 10}
+    )
+    assert total == 10
+    assert earned == 7  # both members completed, under the (higher) authoritative quota
+
+
+def test_calc_ects_progress_group_quotas_missing_group_falls_back_to_raw_sum() -> None:
+    """A group_quotas dict that doesn't mention this particular group at all (shouldn't
+    normally happen - the server only lets a course reference a group that exists) falls
+    back to an uncapped raw member sum, the same shape an unmatched name produces."""
+    courses = [
+        make_course(id=20, ects=3, group="Electives"),
+        make_course(id=21, ects=4, group="Electives"),
+    ]
+    settings = {"completedCourseIds": [20, 21]}
+
+    earned, total = _calc_ects_progress(courses, settings, group_quotas={"Other Group": 99})
+    assert total == 7
+    assert earned == 7
+
+
+# ---------------------------------------------------------------------------
 # _calc_course_hours
 # ---------------------------------------------------------------------------
 

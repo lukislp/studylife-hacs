@@ -134,6 +134,16 @@ class StudyLifeApiClient:
         lives on /api/settings (activeStudyProgramId)."""
         return await self._get("/api/studyprograms")
 
+    async def async_get_study_program(self, program_id: int) -> dict[str, Any]:
+        """Detail for ONE custom study programme: {id, name, groupEctsQuotas}, where
+        groupEctsQuotas is the AUTHORITATIVE elective-group name -> max-creditable-ECTS
+        mapping (a separate DB-configured field, never embedded in the group's display
+        name - StudyProgramDetailDto.GroupEctsQuotas). Only meaningful for a CUSTOM
+        programme (an int id from /api/studyprograms); the built-in one has no DB row
+        and no route here at all - see coordinator.py's _async_update_data, which only
+        calls this for the currently active programme when it's a custom one."""
+        return await self._get(f"/api/studyprograms/{program_id}")
+
     async def async_get_timer_state(self) -> dict[str, Any]:
         return await self._get("/api/timerstate")
 

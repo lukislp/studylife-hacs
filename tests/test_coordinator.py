@@ -26,7 +26,7 @@ from custom_components.studylife.coordinator import (
     WeeklyReport,
 )
 
-from .conftest import make_raw_session
+from .conftest import make_course, make_raw_session, make_raw_study_program
 
 
 async def _capture_weekly_report_events(hass: HomeAssistant) -> list:
@@ -260,3 +260,191 @@ async def test_multiple_study_programs_fetch_courses_per_program(
     assert mock_api_client.async_get_courses.call_count == 2
     assert mock_api_client.async_get_courses.call_args_list == [call(0), call(5)]
     assert set(coordinator.data.programs.keys()) == {"builtin", "5"}
+
+
+# ---------------------------------------------------------------------------
+# D4 fix #1: week_hours upper bound (`_async_update_data` AND `_build_program_data`
+# both filter sessions to `week_start <= start < week_start + 7 days`, matching
+# Index.razor.cs exactly - a far-future-dated session must not inflate "this week").
+# ---------------------------------------------------------------------------
+
+# 2026-01-08 12:00:00 UTC = 2026-01-08 04:00 US/Pacific (the test hass fixture's
+# default tz - see pytest_homeassistant_custom_component.common). A Thursday, so
+# "this week" runs Monday 2026-01-05 through Sunday 2026-01-11 - same convention as
+# test_sensor.py's FROZEN_NOW, reused here for the same reason.
+FROZEN_NOW = "2026-01-08 12:00:00"
+
+
+@freeze_time(FROZEN_NOW)
+async def test_week_hours_excludes_future_dated_session_beyond_this_week(
+    hass: HomeAssistant, mock_api_client: AsyncMock
+) -> None:
+    """Regression test for audit finding D4: /api/sessions/history has no upper date
+    bound server-side, so a session scheduled almost 4 weeks out (well past this
+    Mon-Sun week) must be EXCLUDED from week_hours/week_sessions, not silently
+    inflate them. Mirrors the golden-fixture scenario
+    "week_quota_future_dated_session_drift" (tests/test_metrics_golden_fixtures.py)."""
+    history = [
+        make_raw_session(id=1, start="2026-01-06T09:00:00", end="2026-01-06T11:00:00"),  # 2h, this week
+        make_raw_session(id=2, start="2026-02-02T09:00:00", end="2026-02-02T13:00:00"),  # 4h, ~4 weeks out
+    ]
+    mock_api_client.async_get_session_history.return_value = history
+
+    coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is True
+    assert coordinator.data.week_hours == 2.0  # NOT 6.0 (2 + 4)
+    assert len(coordinator.data.week_sessions) == 1
+    assert coordinator.data.week_sessions[0].id == 1
+
+
+@freeze_time(FROZEN_NOW)
+async def test_program_data_week_hours_also_excludes_future_dated_session(
+    hass: HomeAssistant, mock_api_client: AsyncMock
+) -> None:
+    """Same fix, the OTHER call site: _build_program_data's per-programme week_hours
+    (feeding coordinator.data.programs[...]/the per-programme device sensors) must
+    apply the identical upper bound, not just the top-level field."""
+    history = [
+        make_raw_session(id=1, course_id=100, start="2026-01-06T09:00:00", end="2026-01-06T11:00:00"),
+        make_raw_session(id=2, course_id=100, start="2026-02-02T09:00:00", end="2026-02-02T13:00:00"),
+    ]
+    mock_api_client.async_get_session_history.return_value = history
+    mock_api_client.async_get_study_programs.return_value = [
+        make_raw_study_program(id=None, name="Built-in", is_built_in=True),
+    ]
+    mock_api_client.async_get_courses.return_value = [make_course(id=100)]
+
+    coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is True
+    assert coordinator.data.programs["builtin"].week_hours == 2.0
+
+
+@freeze_time(FROZEN_NOW)
+async def test_month_hours_still_includes_far_future_dated_session_intentionally(
+    hass: HomeAssistant, mock_api_client: AsyncMock
+) -> None:
+    """NOT a bug, and NOT touched by the D4 fix: Index.razor.cs's own month filter
+    (`monthSessions = history.Where(s => s.StartTime.Date >= monthStart)`) has no
+    upper bound either - checked and confirmed the real app's intended behavior, not
+    a second instance of the week_hours drift. A session dated well beyond the
+    current month must still count towards month_hours, exactly like before this
+    fix - this regression test exists so a future well-meaning "consistency" change
+    doesn't silently add an upper bound here and break parity with the C# truth
+    (the golden fixtures would catch it too, but the intent should be explicit here)."""
+    history = [
+        make_raw_session(id=1, start="2026-01-06T09:00:00", end="2026-01-06T11:00:00"),  # 2h, this month
+        make_raw_session(id=2, start="2026-02-02T09:00:00", end="2026-02-02T13:00:00"),  # 4h, next month
+    ]
+    mock_api_client.async_get_session_history.return_value = history
+
+    coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is True
+    assert coordinator.data.month_quota.hours == 6.0  # 2 + 4, deliberately unbounded
+
+
+# ---------------------------------------------------------------------------
+# D4 fix #2: active custom study programme's elective-group ECTS quotas come from
+# GET /api/studyprograms/{id} (StudyProgramDetailDto.GroupEctsQuotas) instead of
+# regex-parsing "(N ECTS)" out of the group's display name.
+# ---------------------------------------------------------------------------
+
+
+async def test_active_custom_program_uses_study_program_detail_for_group_quotas(
+    hass: HomeAssistant, mock_api_client: AsyncMock
+) -> None:
+    """The exact bug this fix targets: an elective group named plain "Electives" (no
+    "(N ECTS)" substring) whose real, DB-configured quota (5) only the detail
+    endpoint can supply. Mirrors the golden-fixture scenario
+    "custom_program_group_quota_not_embedded_in_name"."""
+    mock_api_client.async_get_settings.return_value = {
+        "activeStudyProgramId": 7,
+        "completedCourseIds": [20, 21],
+    }
+    mock_api_client.async_get_study_programs.return_value = [
+        make_raw_study_program(id=None, name="Built-in", is_built_in=True),
+        make_raw_study_program(id=7, name="Custom", is_built_in=False),
+    ]
+    custom_courses = [
+        make_course(id=20, ects=3, group="Electives"),
+        make_course(id=21, ects=4, group="Electives"),
+    ]
+    mock_api_client.async_get_courses.side_effect = (
+        lambda program_id: custom_courses if program_id == 7 else []
+    )
+    mock_api_client.async_get_study_program.return_value = {
+        "id": 7,
+        "name": "Custom",
+        "groupEctsQuotas": {"Electives": 5},
+    }
+
+    coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is True
+    mock_api_client.async_get_study_program.assert_awaited_once_with(7)
+    # NOT ectsTotal=7/ectsEarned=7 (the uncapped regex-fallback sum).
+    assert coordinator.data.ects_total == 5
+    assert coordinator.data.ects_earned == 5
+    assert coordinator.data.programs["7"].ects_total == 5
+    assert coordinator.data.programs["7"].ects_earned == 5
+
+
+async def test_active_builtin_program_does_not_fetch_study_program_detail(
+    hass: HomeAssistant, mock_api_client: AsyncMock
+) -> None:
+    """No activeStudyProgramId (built-in programme active, the default mock) - the
+    built-in entry has no DB row and no /api/studyprograms/{id} route at all, so the
+    coordinator must not call the new endpoint in this case."""
+    coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is True
+    mock_api_client.async_get_study_program.assert_not_awaited()
+
+
+async def test_stale_active_program_id_skips_detail_fetch_and_falls_back(
+    hass: HomeAssistant, mock_api_client: AsyncMock
+) -> None:
+    """activeStudyProgramId pointing at a programme no longer present in
+    async_get_study_programs (e.g. just deleted from another client) must NOT
+    attempt the detail fetch - that would 404 and fail the WHOLE refresh - and must
+    still fall back to the built-in programme, exactly like active_study_program's
+    own pre-existing stale-id defensiveness."""
+    mock_api_client.async_get_settings.return_value = {"activeStudyProgramId": 999}
+    mock_api_client.async_get_study_programs.return_value = [
+        make_raw_study_program(id=None, name="Built-in", is_built_in=True),
+    ]
+
+    coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is True
+    mock_api_client.async_get_study_program.assert_not_awaited()
+    assert coordinator.data.active_study_program.id is None
+
+
+async def test_study_program_detail_error_maps_to_update_failed(
+    hass: HomeAssistant, mock_api_client: AsyncMock
+) -> None:
+    """StudyLifeApiError from the new async_get_study_program call follows the exact
+    same error-handling pattern as every other required fetch inside this same try
+    block - see test_api_error_maps_to_update_failed above."""
+    mock_api_client.async_get_settings.return_value = {"activeStudyProgramId": 7}
+    mock_api_client.async_get_study_programs.return_value = [
+        make_raw_study_program(id=None, name="Built-in", is_built_in=True),
+        make_raw_study_program(id=7, name="Custom", is_built_in=False),
+    ]
+    mock_api_client.async_get_study_program.side_effect = StudyLifeApiError("server unreachable")
+
+    coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success is False
+    assert isinstance(coordinator.last_exception, UpdateFailed)
+    assert "server unreachable" in str(coordinator.last_exception)

@@ -54,6 +54,7 @@ def mock_api_client() -> AsyncMock:
     client.async_get_timer_state.return_value = {}
     client.async_get_study_programs.return_value = []
     client.async_get_courses.return_value = []
+    client.async_get_study_program.return_value = {}
     return client
 
 
