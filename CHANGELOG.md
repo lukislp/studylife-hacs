@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/lukislp/studylife-hacs/compare/v1.3.3...v1.4.0) (2026-08-26)
+
+
+### Features
+
+* read all metrics from the StudyLife server instead of computing them ([860b9be](https://github.com/lukislp/studylife-hacs/commit/860b9be7d865a668e46375b9d5faa5ac744a979a))
+
 ## [1.3.3](https://github.com/lukislp/studylife-hacs/compare/v1.3.2...v1.3.3) (2026-08-26)
 
 
