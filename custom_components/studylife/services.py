@@ -29,6 +29,9 @@ CREATE_SESSION_SCHEMA = vol.Schema(
     {
         vol.Optional("device_id"): cv.string,
         vol.Required("course_id"): vol.Coerce(int),
+        # Deprecated: the server now derives courseName/courseColor from the catalog
+        # and ignores whatever is sent. Still accepted (not rejected by the schema)
+        # so existing automations that pass them don't hard-fail - see services.py.
         vol.Optional("course_name"): cv.string,
         vol.Optional("course_color"): cv.string,
         vol.Required("start_time"): cv.datetime,
@@ -44,6 +47,7 @@ UPDATE_SESSION_SCHEMA = vol.Schema(
         vol.Optional("device_id"): cv.string,
         vol.Required("session_id"): vol.Coerce(int),
         vol.Optional("course_id"): vol.Coerce(int),
+        # Deprecated: ignored, see the comment on CREATE_SESSION_SCHEMA above.
         vol.Optional("course_name"): cv.string,
         vol.Optional("course_color"): cv.string,
         vol.Optional("start_time"): cv.datetime,
@@ -66,6 +70,7 @@ SET_COURSE_GOAL_SCHEMA = vol.Schema(
     {
         vol.Optional("device_id"): cv.string,
         vol.Required("course_id"): vol.Coerce(int),
+        # Deprecated: ignored, see the comment on CREATE_SESSION_SCHEMA above.
         vol.Optional("course_name"): cv.string,
         vol.Optional("target_date"): cv.date,
         vol.Optional("grade"): vol.Coerce(float),
@@ -104,8 +109,26 @@ def _resolve_course(coordinator: StudyLifeCoordinator, course_id: int) -> dict |
     """Look up a course_id in the catalog (/api/courses) - lets create_session/
     set_course_goal/update_session be called with just a course_id (e.g. from
     select.studylife_active_course's course_id attribute) instead of having to
-    also hand-type the matching course_name/course_color."""
+    also hand-type the matching course_name/course_color.
+
+    The server now validates every CourseId against this same catalog (built-in
+    + the user's custom courses) and derives courseName/courseColor itself, so
+    a course_id that doesn't resolve here is rejected by the server too - the
+    old "unknown course_id + manual course_name" workaround no longer works."""
     return next((c for c in coordinator.data.courses if c["id"] == course_id), None)
+
+
+def _require_course(coordinator: StudyLifeCoordinator, course_id: int) -> dict:
+    """Like _resolve_course, but raises course_not_in_catalog when it can't resolve -
+    used wherever the server would otherwise reject the write with its own 400."""
+    course = _resolve_course(coordinator, course_id)
+    if course is None:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="course_not_in_catalog",
+            translation_placeholders={"course_id": str(course_id)},
+        )
+    return course
 
 
 def _resolve_coordinator(hass: HomeAssistant, call: ServiceCall) -> StudyLifeCoordinator:
@@ -147,15 +170,14 @@ async def async_register_services(hass: HomeAssistant) -> None:
     async def handle_create_session(call: ServiceCall) -> None:
         coordinator = _resolve_coordinator(hass, call)
         course_id = call.data["course_id"]
-        course = _resolve_course(coordinator, course_id)
-        course_name = call.data.get("course_name") or (course["name"] if course else None)
-        if not course_name:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="course_not_in_catalog",
-                translation_placeholders={"course_id": str(course_id)},
-            )
-        course_color = call.data.get("course_color") or (course.get("color") if course else "#6C5CE7")
+        # The server now validates CourseId against the user's catalog (built-in +
+        # custom courses) and derives courseName/courseColor itself; course_name/
+        # course_color in call.data are deprecated/ignored (kept only so existing
+        # automations that still pass them don't fail schema validation) - always
+        # send the catalog-resolved values instead of a user-supplied override.
+        course = _require_course(coordinator, course_id)
+        course_name = course["name"]
+        course_color = course.get("color") or "#6C5CE7"
 
         payload = {
             "id": 0,
@@ -185,13 +207,24 @@ async def async_register_services(hass: HomeAssistant) -> None:
 
         new_course_id = call.data.get("course_id")
         changing_course = new_course_id is not None and new_course_id != existing.course_id
-        resolved = _resolve_course(coordinator, new_course_id) if changing_course else None
+        # course_name/course_color in call.data are deprecated/ignored - see the
+        # comment in handle_create_session. When the course isn't changing, the
+        # existing session's name/color (already catalog-valid) are kept as-is;
+        # when it is changing, the new course_id must resolve via the catalog or
+        # the server would reject the write anyway.
+        if changing_course:
+            resolved = _require_course(coordinator, new_course_id)
+            course_name = resolved["name"]
+            course_color = resolved.get("color") or "#6C5CE7"
+        else:
+            course_name = existing.course_name
+            course_color = existing.course_color
 
         payload = {
             "id": session_id,
             "courseId": new_course_id if new_course_id is not None else existing.course_id,
-            "courseName": call.data.get("course_name") or (resolved["name"] if resolved else existing.course_name),
-            "courseColor": call.data.get("course_color") or (resolved.get("color") if resolved else existing.course_color),
+            "courseName": course_name,
+            "courseColor": course_color,
             "startTime": _to_naive_iso(call.data["start_time"]) if "start_time" in call.data else existing.start.isoformat(),
             "endTime": _to_naive_iso(call.data["end_time"]) if "end_time" in call.data else existing.end.isoformat(),
             "topic": call.data.get("topic", existing.topic),
@@ -210,19 +243,15 @@ async def async_register_services(hass: HomeAssistant) -> None:
     async def handle_set_course_goal(call: ServiceCall) -> None:
         coordinator = _resolve_coordinator(hass, call)
         course_id = call.data["course_id"]
+        # course_name in call.data is deprecated/ignored - see the comment in
+        # handle_create_session. The course must resolve via the catalog; the
+        # server derives courseName itself now, so there's no fallback path
+        # left for a course_id outside the catalog.
+        course = _require_course(coordinator, course_id)
+        course_name = course["name"]
         existing = next(
             (g for g in coordinator.data.course_goals if g.get("courseId") == course_id), None
         )
-        course_name = call.data.get("course_name")
-        if not course_name:
-            course = _resolve_course(coordinator, course_id)
-            course_name = course["name"] if course else (existing.get("courseName") if existing else None)
-        if not course_name:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="course_not_in_catalog",
-                translation_placeholders={"course_id": str(course_id)},
-            )
         target_date = call.data.get("target_date")
         payload = {
             "courseId": course_id,

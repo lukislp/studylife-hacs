@@ -109,9 +109,9 @@
       "description": "Legt eine neue Lerneinheit in StudyLife an.",
       "fields": {
         "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
-        "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses." },
-        "course_name": { "name": "Kursname", "description": "Anzeigename des Kurses." },
-        "course_color": { "name": "Kursfarbe", "description": "Hex-Farbe, z. B. #6C5CE7." },
+        "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses. Muss im Kurskatalog vorhanden sein (eingebaut oder eigen)." },
+        "course_name": { "name": "Kursname (veraltet)", "description": "Veraltet, wird ignoriert. Der Server leitet den Kursnamen jetzt aus dem Katalog ab." },
+        "course_color": { "name": "Kursfarbe (veraltet)", "description": "Veraltet, wird ignoriert. Der Server leitet die Kursfarbe jetzt aus dem Katalog ab." },
         "start_time": { "name": "Start", "description": "Beginn der Lerneinheit." },
         "end_time": { "name": "Ende", "description": "Ende der Lerneinheit." },
         "topic": { "name": "Thema", "description": "Optionales Thema der Session." },
@@ -125,9 +125,9 @@
       "fields": {
         "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
         "session_id": { "name": "Session-ID", "description": "ID der zu bearbeitenden Session." },
-        "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses." },
-        "course_name": { "name": "Kursname", "description": "Anzeigename des Kurses." },
-        "course_color": { "name": "Kursfarbe", "description": "Hex-Farbe, z. B. #6C5CE7." },
+        "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses. Muss im Kurskatalog vorhanden sein (eingebaut oder eigen), wenn der Kurs der Session geändert wird." },
+        "course_name": { "name": "Kursname (veraltet)", "description": "Veraltet, wird ignoriert. Der Server leitet den Kursnamen jetzt aus dem Katalog ab." },
+        "course_color": { "name": "Kursfarbe (veraltet)", "description": "Veraltet, wird ignoriert. Der Server leitet die Kursfarbe jetzt aus dem Katalog ab." },
         "start_time": { "name": "Start", "description": "Neuer Beginn der Lerneinheit." },
         "end_time": { "name": "Ende", "description": "Neues Ende der Lerneinheit." },
         "topic": { "name": "Thema", "description": "Thema der Session." },
@@ -149,8 +149,8 @@
       "description": "Legt Zieldatum, Note und/oder Abschluss-Notiz für einen Kurs an oder aktualisiert sie.",
       "fields": {
         "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
-        "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses." },
-        "course_name": { "name": "Kursname", "description": "Anzeigename des Kurses." },
+        "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses. Muss im Kurskatalog vorhanden sein (eingebaut oder eigen)." },
+        "course_name": { "name": "Kursname (veraltet)", "description": "Veraltet, wird ignoriert. Der Server leitet den Kursnamen jetzt aus dem Katalog ab." },
         "target_date": { "name": "Ziel-Datum", "description": "Gewünschtes Abschlussdatum." },
         "grade": { "name": "Note", "description": "Abschlussnote, z. B. 1,3." },
         "completion_note": { "name": "Abschluss-Notiz", "description": "Freitext-Notiz zum Kursabschluss." }
@@ -181,7 +181,7 @@
     "unknown_device": { "message": "Unbekanntes Gerät: {device_id}" },
     "device_not_studylife": { "message": "Dieses Gerät gehört zu keiner StudyLife-Integration." },
     "multiple_servers_need_device_id": { "message": "Mehrere StudyLife-Server konfiguriert - bitte device_id im Service-Aufruf angeben." },
-    "course_not_in_catalog": { "message": "Kurs-ID {course_id} ist nicht im Katalog (/api/courses) - course_name muss angegeben werden." },
+    "course_not_in_catalog": { "message": "Kurs-ID {course_id} existiert nicht. Es muss ein Kurs aus dem StudyLife-Katalog sein (eingebaut oder eigen, siehe /api/courses) - der Server akzeptiert eine unbekannte course_id nicht mehr, auch nicht mit manuell angegebenem course_name." },
     "session_not_found": { "message": "Session {session_id} wurde nicht gefunden." },
     "unknown_program": { "message": "Studiengang-ID {program_id} ist nicht bekannt (sensor.studylife_active_program, Attribut 'programs')." }
   }
