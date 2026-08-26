@@ -1,3 +1,10 @@
+## [1.3.3](https://github.com/lukislp/studylife-hacs/compare/v1.3.2...v1.3.3) (2026-08-26)
+
+
+### Bug Fixes
+
+* bound week hours to the week and fetch real elective ECTS quotas ([b80a7dd](https://github.com/lukislp/studylife-hacs/commit/b80a7dd3a1db14dd98444e5cdbbd3ec4644cad28))
+
 ## [1.3.2](https://github.com/lukislp/studylife-hacs/compare/v1.3.1...v1.3.2) (2026-08-05)
 
 
