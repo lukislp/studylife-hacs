@@ -59,6 +59,17 @@ jobs:
           cache: pip
           cache-dependency-path: requirements_test.txt
       - run: pip install -r requirements_test.txt
+      # tests/test_openapi_contract.py (audit finding D2/D3) and tests/test_metrics_golden_
+      # fixtures.py (audit finding D4) are a normal part of this `pytest tests/` run - they're
+      # just two more modules under tests/. Called out here because they behave differently in
+      # CI than the rest of the suite: each fetches a committed file from the studylife repo's
+      # main branch (docs/api/openapi.json / docs/api/metrics-fixtures.json, via their own
+      # default STUDYLIFE_OPENAPI_SPEC / STUDYLIFE_METRICS_FIXTURES URLs) and FAILS this job
+      # (not skips) if that file is unreachable, or if this integration's api.py/coordinator.py
+      # have drifted from it - see those modules' own docstrings for the full reachability
+      # policy (CI vs. local/offline dev) and tests/_network_fetch.py for why they each need one
+      # real outbound HTTPS request despite pytest-homeassistant-custom-component blocking
+      # sockets by default for every other test in this suite.
       - run: pytest tests/ -v --cov=custom_components/studylife --cov-report=json:coverage.json
       # Self-hosted coverage badge (no external service), downloaded and committed by the
       # semantic-release job below - same pattern as the manifest-version sync.
