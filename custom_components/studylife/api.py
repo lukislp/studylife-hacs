@@ -14,6 +14,13 @@ backend in src/StudyLife.Server/Controllers. GETs on endpoints where the
 server emits ETags are sent conditionally (If-None-Match), so a 304 Not
 Modified reuses the previously parsed body instead of re-parsing an identical
 download every poll cycle.
+
+Metrics (streak/quotas/ECTS/forecast/achievements/...) are NOT computed here or
+in coordinator.py - GET /api/metrics/summary and GET /api/metrics/achievements
+return them pre-computed by StudyLife.Shared, the same code the app itself
+runs (owner decision: every metric lives in exactly ONE place). Those two
+endpoints are newer than the rest of this API surface, so a server that
+predates them answers with a plain 404 - see StudyLifeApiEndpointMissingError.
 """
 from __future__ import annotations
 
@@ -24,6 +31,15 @@ import aiohttp
 
 from .const import REQUEST_TIMEOUT
 
+# Shown (wrapped in a coordinator UpdateFailed) when GET /api/metrics/summary or GET
+# /api/metrics/achievements 404s - see StudyLifeApiEndpointMissingError. Names the README's
+# minimum-version note explicitly so the failure is actionable, not just "something's wrong".
+_METRICS_ENDPOINT_MISSING_HINT = (
+    "the StudyLife server does not expose this endpoint yet - it predates the server release "
+    "that added Home Assistant metrics support (see this integration's README for the minimum "
+    "StudyLife server version). Update the StudyLife server, then reload this integration."
+)
+
 
 class StudyLifeApiError(Exception):
     """Raised when the StudyLife API can't be reached or returns an error."""
@@ -31,6 +47,17 @@ class StudyLifeApiError(Exception):
 
 class StudyLifeApiAuthError(StudyLifeApiError):
     """Raised when the server rejects the API key (HTTP 401)."""
+
+
+class StudyLifeApiEndpointMissingError(StudyLifeApiError):
+    """Raised when the server answers a call this client version expects to succeed
+    with a plain 404 - in practice this means the StudyLife server predates the
+    release that added the endpoint (currently only GET /api/metrics/summary and GET
+    /api/metrics/achievements - the "ha metrics" server release), not that some
+    specific resource is missing. Distinct from the generic StudyLifeApiError so the
+    coordinator's UpdateFailed message names the real, actionable cause ("update your
+    StudyLife server") instead of a generic "error fetching ..." string - see the
+    `missing_endpoint_hint` plumbing in `_request`/`_get` below."""
 
 
 class StudyLifeApiClient:
@@ -59,7 +86,9 @@ class StudyLifeApiClient:
         """The long-lived per-user key this client authenticates with."""
         return self._api_key
 
-    async def _request(self, method: str, path: str, json: Any = None) -> Any:
+    async def _request(
+        self, method: str, path: str, json: Any = None, *, missing_endpoint_hint: str | None = None
+    ) -> Any:
         url = f"{self._base_url}{path}"
         headers = {"X-Api-Key": self._api_key} if self._api_key else {}
         cached = self._etag_cache.get(path) if method == "GET" else None
@@ -78,6 +107,14 @@ class StudyLifeApiClient:
                         f"API key rejected (401) by {url} - re-pair (StudyLife app's Setup page,"
                         ' "Home Assistant" card)'
                     )
+                if response.status == 404 and missing_endpoint_hint is not None:
+                    # Caller told us in advance what a 404 on THIS path means (see
+                    # async_get_metrics_summary/async_get_metrics_achievements below) -
+                    # a generic StudyLifeApiError from raise_for_status() further down would
+                    # be technically correct but useless to a user staring at an UpdateFailed
+                    # notification, so this raises a distinct, actionable error instead.
+                    response.release()
+                    raise StudyLifeApiEndpointMissingError(f"{method} {url} returned 404 - {missing_endpoint_hint}")
                 if cached is not None and response.status == 304:
                     return cached[1]
                 response.raise_for_status()
@@ -97,8 +134,8 @@ class StudyLifeApiClient:
         except aiohttp.ClientError as err:
             raise StudyLifeApiError(f"Error fetching {url}: {err}") from err
 
-    async def _get(self, path: str) -> Any:
-        return await self._request("GET", path)
+    async def _get(self, path: str, *, missing_endpoint_hint: str | None = None) -> Any:
+        return await self._request("GET", path, missing_endpoint_hint=missing_endpoint_hint)
 
     async def async_get_sessions(self) -> list[dict[str, Any]]:
         return await self._get("/api/sessions")
@@ -134,18 +171,33 @@ class StudyLifeApiClient:
         lives on /api/settings (activeStudyProgramId)."""
         return await self._get("/api/studyprograms")
 
-    async def async_get_study_program(self, program_id: int) -> dict[str, Any]:
-        """Detail for ONE custom study programme: {id, name, groupEctsQuotas}, where
-        groupEctsQuotas is the AUTHORITATIVE elective-group name -> max-creditable-ECTS
-        mapping (a separate DB-configured field, never embedded in the group's display
-        name - StudyProgramDetailDto.GroupEctsQuotas). Only meaningful for a CUSTOM
-        programme (an int id from /api/studyprograms); the built-in one has no DB row
-        and no route here at all - see coordinator.py's _async_update_data, which only
-        calls this for the currently active programme when it's a custom one."""
-        return await self._get(f"/api/studyprograms/{program_id}")
-
     async def async_get_timer_state(self) -> dict[str, Any]:
         return await self._get("/api/timerstate")
+
+    async def async_get_metrics_summary(self, program_id: int | None = None) -> dict[str, Any]:
+        """GET /api/metrics/summary - every dashboard metric StudyLife.Shared computes for
+        ONE study programme in a single response (streak, week/month quota, ECTS, average
+        grade, forecast, course hours, neglected course, weekly report, topics, month
+        comparison, upcoming course goals - see docs/api's metrics contract for the exact
+        shape). `program_id=None` lets the server resolve the caller's ACTIVE programme
+        (same convention as async_get_courses); an explicit id (0 = built-in) asks for one
+        specific programme - the coordinator calls this once per study programme.
+
+        Deliberately never sends the contract's optional `now=` override: that exists so
+        server-side fixture tests can call deterministically, not for production traffic -
+        the server's own local clock is authoritative here, matching every other GET this
+        client makes. (It would also defeat the ETag cache: a `now=` that changes every poll
+        would make every request's cache key unique forever.)"""
+        path = "/api/metrics/summary" if program_id is None else f"/api/metrics/summary?program={program_id}"
+        return await self._get(path, missing_endpoint_hint=_METRICS_ENDPOINT_MISSING_HINT)
+
+    async def async_get_metrics_achievements(self, program_id: int | None = None) -> dict[str, Any]:
+        """GET /api/metrics/achievements - all 44 achievement tiers' unlock state for ONE
+        study programme, computed server-side from the exact aggregation
+        RunAchievementCheckAsync/BuildAchievements use. Same `program_id` convention as
+        async_get_metrics_summary."""
+        path = "/api/metrics/achievements" if program_id is None else f"/api/metrics/achievements?program={program_id}"
+        return await self._get(path, missing_endpoint_hint=_METRICS_ENDPOINT_MISSING_HINT)
 
     async def async_create_session(self, session: dict[str, Any]) -> dict[str, Any]:
         return await self._request("POST", "/api/sessions", json=session)
