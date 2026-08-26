@@ -52,10 +52,146 @@ def mock_api_client() -> AsyncMock:
     client.async_get_notes.return_value = []
     client.async_get_course_goals.return_value = []
     client.async_get_timer_state.return_value = {}
-    client.async_get_study_programs.return_value = []
+    # The real server's GET /api/studyprograms always returns at least the synthetic
+    # built-in entry ("GetAll's synthetic first entry has no DB row" - see
+    # coordinator.py's StudyProgram docstring), so this default mirrors that instead of
+    # an unrealistic empty list - tests that specifically want to exercise "no study
+    # programmes at all" (coordinator.py's defensive UpdateFailed for that case) set
+    # this to [] explicitly.
+    client.async_get_study_programs.return_value = [make_raw_study_program()]
     client.async_get_courses.return_value = []
-    client.async_get_study_program.return_value = {}
+    client.async_get_metrics_summary.return_value = make_raw_metrics_summary()
+    client.async_get_metrics_achievements.return_value = make_raw_metrics_achievements()
     return client
+
+
+def make_raw_quota(
+    *,
+    hours: float = 0.0,
+    target_min: float = 25.0,
+    target_max: float = 30.0,
+    percent: float = 0.0,
+    warning: bool = True,
+    missing_hours: float = 25.0,
+) -> dict[str, Any]:
+    """Build a raw (server-shaped) weekQuota/monthQuota object, as api.py's
+    _parse_quota expects to consume it - the `minPercent` field the contract
+    defines is deliberately omitted here (coordinator.py never reads it, see
+    QuotaInfo's fields), same as every other unused response field.
+
+    `warning` defaults True (matching the other defaults: 0 hours studied against a
+    positive 25h target is realistically "under target" - StudyMetrics.CalcQuota would
+    compute the same) rather than an arbitrary False, since several integration tests
+    rely on the default mock representing a genuinely empty, under-target state."""
+    return {
+        "hours": hours,
+        "targetMin": target_min,
+        "targetMax": target_max,
+        "percent": percent,
+        "minPercent": percent,
+        "warning": warning,
+        "missingHours": missing_hours,
+    }
+
+
+def make_raw_metrics_summary(
+    *,
+    week_hours: float = 0.0,
+    month_hours: float = 0.0,
+    total_hours: float = 0.0,
+    total_sessions: int = 0,
+    streak_current: int = 0,
+    streak_longest: int = 0,
+    week_quota: dict[str, Any] | None = None,
+    month_quota: dict[str, Any] | None = None,
+    ects_earned: int = 0,
+    ects_total: int = 0,
+    average_grade: float | None = None,
+    forecast_available: bool = False,
+    forecast_date: str | None = None,
+    forecast_recent_weekly_hours: float | None = None,
+    neglected_course: dict[str, Any] | None = None,
+    weekly_report: dict[str, Any] | None = None,
+    course_hours: list[dict[str, Any]] | None = None,
+    topics_completed: int = 0,
+    topics_total: int = 0,
+    current_month_hours: float | None = None,
+    previous_month_hours: float = 0.0,
+    delta_vs_previous_month: float | None = None,
+    has_year_data: bool = False,
+    same_month_last_year_hours: float | None = None,
+    delta_vs_last_year: float | None = None,
+    upcoming_course_goals: list[dict[str, Any]] | None = None,
+    program_id: int | None = None,
+    program_name: str = "StudyLife",
+    program_is_built_in: bool = True,
+) -> dict[str, Any]:
+    """Build a raw GET /api/metrics/summary response, as coordinator.py's
+    _program_data_from_summary (and the top-level active-programme mapping in
+    _async_update_data) expects to consume it - matches the shared metrics
+    contract's wire format exactly (see docs/api's metrics contract)."""
+    resolved_current_month_hours = current_month_hours if current_month_hours is not None else month_hours
+    resolved_delta_vs_previous_month = (
+        delta_vs_previous_month
+        if delta_vs_previous_month is not None
+        else resolved_current_month_hours - previous_month_hours
+    )
+    return {
+        "asOf": "2026-01-06T10:00:00",
+        "program": {"id": program_id, "name": program_name, "isBuiltIn": program_is_built_in},
+        "streak": {"current": streak_current, "longest": streak_longest},
+        "hours": {
+            "week": week_hours,
+            "month": month_hours,
+            "total": total_hours,
+            "totalSessions": total_sessions,
+        },
+        "weekQuota": week_quota if week_quota is not None else make_raw_quota(hours=week_hours),
+        "monthQuota": month_quota if month_quota is not None else make_raw_quota(
+            hours=month_hours, target_min=100.0, target_max=130.0, missing_hours=100.0
+        ),
+        "ects": {"earned": ects_earned, "total": ects_total},
+        "averageGrade": average_grade,
+        "forecast": {
+            "available": forecast_available,
+            "alreadyDone": False,
+            "date": forecast_date,
+            "recentWeeklyHours": forecast_recent_weekly_hours,
+        },
+        "monthComparison": {
+            "currentMonthHours": resolved_current_month_hours,
+            "previousMonthHours": previous_month_hours,
+            "deltaVsPreviousMonth": resolved_delta_vs_previous_month,
+            "hasYearData": has_year_data,
+            "sameMonthLastYearHours": same_month_last_year_hours,
+            "deltaVsLastYear": delta_vs_last_year,
+        },
+        "neglectedCourse": neglected_course,
+        "weeklyReport": weekly_report if weekly_report is not None else {
+            "weekId": "2026-W01",
+            "hours": 0.0,
+            "deltaVsPreviousWeek": 0.0,
+            "topCourseName": None,
+            "sessionCount": 0,
+        },
+        "courseHours": course_hours if course_hours is not None else [],
+        "topics": {"completed": topics_completed, "total": topics_total},
+        "upcomingCourseGoals": upcoming_course_goals if upcoming_course_goals is not None else [],
+    }
+
+
+def make_raw_achievement_tier(
+    *, category: str = "hours", threshold: float = 25, unlocked: bool = False, current: float = 0.0
+) -> dict[str, Any]:
+    return {"category": category, "threshold": threshold, "unlocked": unlocked, "current": current}
+
+
+def make_raw_metrics_achievements(
+    *, unlocked: int = 0, total: int = 44, tiers: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
+    """Build a raw GET /api/metrics/achievements response, as coordinator.py's
+    _parse_achievements expects to consume it."""
+    return {"unlocked": unlocked, "total": total, "tiers": tiers if tiers is not None else []}
 
 
 def make_raw_session(

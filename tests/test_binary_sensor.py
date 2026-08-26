@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
-from freezegun import freeze_time
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -25,15 +24,11 @@ from custom_components.studylife.binary_sensor import (
 from .conftest import (
     get_entity_id,
     make_course,
-    make_raw_session,
+    make_raw_metrics_summary,
+    make_raw_quota,
     make_raw_study_program,
     setup_integration,
 )
-
-# Same frozen instant as test_sensor.py: a Thursday, so "this week" is Monday
-# 2026-01-05 through Sunday 2026-01-11, and the same date sits comfortably
-# inside January for the month-quota tests too.
-FROZEN_NOW = "2026-01-08 12:00:00"
 
 
 def _binary_sensor_id(
@@ -63,20 +58,15 @@ async def test_week_quota_warning_on_when_under_weekly_target(
     assert state.state == STATE_ON
 
 
-@freeze_time(FROZEN_NOW)
 async def test_week_quota_warning_off_when_weekly_target_met(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_api_client
 ) -> None:
-    """2h logged today clears a 1h weekly goal -> warning False.
-
-    Note: a goal of literally 0h can't be used for this - coordinator.py reads
-    it as `settings.get("weeklyGoalMinHours") or WEEK_QUOTA_MIN_HOURS`, and
-    Python's `or` treats 0 as falsy, so a 0h goal silently falls back to the
-    25h default instead of being honored as "always met"."""
-    mock_api_client.async_get_settings.return_value = {"weeklyGoalMinHours": 1}
-    history = [make_raw_session(id=1, start="2026-01-08T10:00:00", end="2026-01-08T12:00:00")]
-    mock_api_client.async_get_sessions.return_value = history
-    mock_api_client.async_get_session_history.return_value = history
+    """week_quota.warning reads straight off GET /api/metrics/summary's `weekQuota.
+    warning` (the server decides "met vs. not met" now, see coordinator.py's module
+    docstring) - a False value there must reach the binary_sensor as STATE_OFF."""
+    mock_api_client.async_get_metrics_summary.return_value = make_raw_metrics_summary(
+        week_quota=make_raw_quota(hours=2.0, target_min=1.0, warning=False)
+    )
 
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 
@@ -97,17 +87,13 @@ async def test_month_quota_warning_on_when_under_monthly_target(
     assert state.state == STATE_ON
 
 
-@freeze_time(FROZEN_NOW)
 async def test_month_quota_warning_off_when_monthly_target_met(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_api_client
 ) -> None:
-    """2h logged this month clears a 1h monthly goal (prorated down to a
-    fraction of an hour this early in the month) -> warning False. Same 0h
-    caveat as the weekly test above applies to monthlyGoalMinHours."""
-    mock_api_client.async_get_settings.return_value = {"monthlyGoalMinHours": 1}
-    history = [make_raw_session(id=1, start="2026-01-08T10:00:00", end="2026-01-08T12:00:00")]
-    mock_api_client.async_get_sessions.return_value = history
-    mock_api_client.async_get_session_history.return_value = history
+    """Same as the weekly test above, for month_quota.warning."""
+    mock_api_client.async_get_metrics_summary.return_value = make_raw_metrics_summary(
+        month_quota=make_raw_quota(hours=2.0, target_min=1.0, warning=False)
+    )
 
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 

@@ -17,6 +17,7 @@ from aioresponses import aioresponses
 from custom_components.studylife.api import (
     StudyLifeApiAuthError,
     StudyLifeApiClient,
+    StudyLifeApiEndpointMissingError,
     StudyLifeApiError,
 )
 
@@ -84,6 +85,73 @@ async def test_get_timer_state(client: StudyLifeApiClient) -> None:
     with aioresponses() as m:
         m.get(f"{BASE_URL}/api/timerstate", payload={"isRunning": False})
         assert await client.async_get_timer_state() == {"isRunning": False}
+
+
+async def test_get_metrics_summary_without_program_id(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/metrics/summary", payload={"streak": {"current": 1}})
+        assert await client.async_get_metrics_summary() == {"streak": {"current": 1}}
+
+
+async def test_get_metrics_summary_with_program_id(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/metrics/summary?program=5", payload={"streak": {"current": 2}})
+        assert await client.async_get_metrics_summary(5) == {"streak": {"current": 2}}
+
+
+async def test_get_metrics_summary_program_zero_is_sent_explicitly(client: StudyLifeApiClient) -> None:
+    """0 (the built-in programme's resolved id) is a real, distinct query value from
+    "no program given at all" - program_id=0 must NOT be treated like None."""
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/metrics/summary?program=0", payload={})
+        assert await client.async_get_metrics_summary(0) == {}
+
+
+async def test_get_metrics_achievements_without_program_id(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/metrics/achievements", payload={"unlocked": 1, "total": 44, "tiers": []})
+        assert await client.async_get_metrics_achievements() == {"unlocked": 1, "total": 44, "tiers": []}
+
+
+async def test_get_metrics_achievements_with_program_id(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/metrics/achievements?program=5", payload={"unlocked": 0, "total": 44, "tiers": []})
+        result = await client.async_get_metrics_achievements(5)
+        assert result == {"unlocked": 0, "total": 44, "tiers": []}
+
+
+async def test_metrics_summary_404_raises_endpoint_missing_error_not_generic(
+    client: StudyLifeApiClient,
+) -> None:
+    """A 404 on this specific, newer endpoint means "server too old", not "resource
+    missing" (there is no per-resource 404 case this client itself distinguishes - see
+    async_get_metrics_summary's docstring) - it must raise the distinct, actionable
+    subclass, not the generic StudyLifeApiError a plain raise_for_status() would give."""
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/metrics/summary", status=404)
+        with pytest.raises(StudyLifeApiEndpointMissingError) as excinfo:
+            await client.async_get_metrics_summary()
+    assert "404" in str(excinfo.value)
+    assert isinstance(excinfo.value, StudyLifeApiError)  # still catchable as the parent type
+
+
+async def test_metrics_achievements_404_raises_endpoint_missing_error(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/metrics/achievements", status=404)
+        with pytest.raises(StudyLifeApiEndpointMissingError):
+            await client.async_get_metrics_achievements()
+
+
+async def test_unrelated_endpoint_404_stays_generic_api_error(client: StudyLifeApiClient) -> None:
+    """The 404-means-old-server special case only applies to endpoints that opted in via
+    `missing_endpoint_hint` - every other endpoint's 404 (e.g. a genuinely deleted
+    resource) must keep raising the plain StudyLifeApiError a normal raise_for_status()
+    produces, not the metrics-specific subclass."""
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/settings", status=404)
+        with pytest.raises(StudyLifeApiError) as excinfo:
+            await client.async_get_settings()
+    assert not isinstance(excinfo.value, StudyLifeApiEndpointMissingError)
 
 
 # --------------------------------------------------------------------------

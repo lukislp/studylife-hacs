@@ -28,7 +28,7 @@ from custom_components.studylife.sensor import (
 from .conftest import (
     get_entity_id,
     make_course,
-    make_raw_session,
+    make_raw_metrics_summary,
     make_raw_study_program,
     setup_integration,
 )
@@ -55,15 +55,13 @@ def _sensor_id(
 async def test_week_hours_and_streak_reflect_coordinator_data(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_api_client
 ) -> None:
-    """week_hours/streak read straight off StudyLifeData.week_hours/streak_days -
-    verified against hand-computed expectations for two sessions on two
-    consecutive days (today and yesterday, both within the current Mon-Sun week)."""
-    history = [
-        make_raw_session(id=1, start="2026-01-08T10:00:00", end="2026-01-08T11:00:00"),  # 1.0h, today
-        make_raw_session(id=2, start="2026-01-07T10:00:00", end="2026-01-07T11:30:00"),  # 1.5h, yesterday
-    ]
-    mock_api_client.async_get_sessions.return_value = history
-    mock_api_client.async_get_session_history.return_value = history
+    """week_hours/streak read straight off StudyLifeData.week_hours/streak_days - which
+    in turn come straight off GET /api/metrics/summary's `hours.week`/`streak.current`
+    (the server computes them now, see coordinator.py's module docstring) - not
+    recomputed from raw session history here."""
+    mock_api_client.async_get_metrics_summary.return_value = make_raw_metrics_summary(
+        week_hours=2.5, streak_current=2, streak_longest=2
+    )
 
     await setup_integration(hass, mock_config_entry, mock_api_client)
 
@@ -137,6 +135,14 @@ async def test_per_programme_sensors_created_for_every_programme(
         7: [make_course(id=200, name="Databases", ects=8, semester=1)],
     }
     mock_api_client.async_get_courses.side_effect = lambda pid: courses_by_pid.get(pid, [])
+    # ects_earned/ects_total now come from GET /api/metrics/summary?program={id} - the
+    # per-programme fan-out calls it once per programme, so the mock must answer per pid
+    # too (same pattern as async_get_courses.side_effect above), not a single shared
+    # return_value.
+    ects_total_by_pid = {0: 5, 7: 8}
+    mock_api_client.async_get_metrics_summary.side_effect = lambda pid: make_raw_metrics_summary(
+        ects_earned=0, ects_total=ects_total_by_pid.get(pid, 0)
+    )
 
     await setup_integration(hass, mock_config_entry, mock_api_client)
 
@@ -172,6 +178,13 @@ async def test_programme_added_later_gets_entities_via_coordinator_listener(
     mock_api_client.async_get_courses.side_effect = lambda pid: (
         [make_course(id=100, name="Algorithms", ects=5, semester=1)] if pid == 0 else []
     )
+    # ects_total now comes from GET /api/metrics/summary?program={id} - answer it per pid,
+    # same as async_get_courses.side_effect above (a single shared return_value can't tell
+    # the built-in and the new programme's calls apart).
+    ects_total_by_pid = {0: 5}
+    mock_api_client.async_get_metrics_summary.side_effect = lambda pid: make_raw_metrics_summary(
+        ects_total=ects_total_by_pid.get(pid, 0)
+    )
 
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 
@@ -190,6 +203,7 @@ async def test_programme_added_later_gets_entities_via_coordinator_listener(
         if pid == 9
         else []
     )
+    ects_total_by_pid[9] = 6
 
     await coordinator.async_refresh()
     await hass.async_block_till_done()

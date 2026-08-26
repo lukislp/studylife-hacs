@@ -49,8 +49,15 @@ CALLED_ENDPOINTS: list[tuple[str, str]] = [
     ("PUT", "/api/coursegoals/{courseId}"),  # async_set_course_goal()
     ("GET", "/api/courses"),  # async_get_courses()
     ("GET", "/api/studyprograms"),  # async_get_study_programs()
-    ("GET", "/api/studyprograms/{id}"),  # async_get_study_program()
+    # NOTE: /api/studyprograms/{id} (StudyProgramDetailDto.GroupEctsQuotas) is NO LONGER
+    # called - it existed only to feed _calc_ects_progress's group-quota fallback, which is
+    # gone now that GET /api/metrics/summary returns ectsEarned/ectsTotal pre-computed (the
+    # owner decision behind this whole change: every metric lives in exactly ONE place,
+    # StudyLife). Pruned from this inventory rather than left stale - see coordinator.py's
+    # module docstring for the removal.
     ("GET", "/api/timerstate"),  # async_get_timer_state()
+    ("GET", "/api/metrics/summary"),  # async_get_metrics_summary()
+    ("GET", "/api/metrics/achievements"),  # async_get_metrics_achievements()
     ("POST", "/api/planner/exam-plan"),  # async_generate_exam_plan()
 ]
 

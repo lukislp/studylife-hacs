@@ -23,6 +23,10 @@ integration doesn't change anything in the StudyLife app.
 - **Deleted study programme:** its entities are **not** automatically removed from the registry — they just go `unavailable`. The orphaned device can then be deleted manually from the HA UI (Settings → Devices & Services → device → Delete). This is deliberate: no automatic cleanup of registry entries that could accidentally break history/automations.
 - The data for this comes from one catalog fetch per study programme (`GET /api/courses?program={id}`, `0` = built-in catalog); sessions (`/api/sessions/history`) and course goals (`/api/coursegoals`) are still fetched **once**, globally, and partitioned per programme on the client side — possible because course IDs are globally unique across all study programmes.
 
+## Requirements
+
+- **StudyLife server v1.44.0 or later.** Every metric this integration exposes (streak, week/month quota, ECTS progress, average grade, forecast, course hours, neglected course, weekly report, topics, month comparison, achievements) is computed server-side and served pre-computed by `GET /api/metrics/summary` and `GET /api/metrics/achievements` — endpoints introduced in that release. An older server doesn't have them: the integration fails the refresh loudly with a clear "update your StudyLife server" message (a Home Assistant repair/`UpdateFailed` notification quoting the missing endpoint) rather than crashing or silently showing stale/wrong numbers. **Deploy order matters:** update the StudyLife server *before* updating this integration — the server release must be live first.
+
 ## Installation
 
 1. Copy the `custom_components/studylife` folder into the `config/custom_components/` directory of your Home Assistant instance (end result: `config/custom_components/studylife/manifest.json`).
