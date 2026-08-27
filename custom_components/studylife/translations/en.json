@@ -182,6 +182,7 @@
     "device_not_studylife": { "message": "This device does not belong to any StudyLife integration." },
     "multiple_servers_need_device_id": { "message": "Multiple StudyLife servers configured - please specify device_id in the service call." },
     "course_not_in_catalog": { "message": "Course ID {course_id} does not exist. It must be a course from your StudyLife catalog (built-in or custom, see /api/courses) - the server no longer accepts an unknown course_id with a manually supplied course_name." },
+    "course_rejected_by_server": { "message": "StudyLife rejected course ID {course_id} - the course list may have changed. This integration refreshes its course catalog on the next poll (or reload the integration now to refresh it immediately), then try again." },
     "session_not_found": { "message": "Session {session_id} was not found." },
     "unknown_program": { "message": "Programme ID {program_id} is not known (sensor.studylife_active_program, attribute 'programs')." }
   }

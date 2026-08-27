@@ -60,6 +60,23 @@ class StudyLifeApiEndpointMissingError(StudyLifeApiError):
     `missing_endpoint_hint` plumbing in `_request`/`_get` below."""
 
 
+class StudyLifeApiCourseRejectedError(StudyLifeApiError):
+    """Raised when the server answers a write carrying a CourseId (create/update
+    session, set/generate a course goal, generate an exam plan) with a plain 400.
+
+    The integration's own services.py pre-checks course_id against its cached
+    course catalog before ever calling here (see _require_course), but that catalog
+    is only refreshed once per poll cycle - a course that was just completed/removed
+    server-side can still pass the local check and reach this call, where the server
+    (which validates CourseId itself on every write) then answers 400. Distinct from
+    the generic StudyLifeApiError so callers can surface an actionable "your catalog
+    is stale" message instead of a raw ClientResponseError-derived string."""
+
+    def __init__(self, course_id: Any, message: str) -> None:
+        self.course_id = course_id
+        super().__init__(message)
+
+
 class StudyLifeApiClient:
     """Talks to /api/sessions, /api/settings, /api/notes and /api/coursegoals."""
 
@@ -115,6 +132,17 @@ class StudyLifeApiClient:
                     # notification, so this raises a distinct, actionable error instead.
                     response.release()
                     raise StudyLifeApiEndpointMissingError(f"{method} {url} returned 404 - {missing_endpoint_hint}")
+                if response.status == 400 and isinstance(json, dict) and "courseId" in json:
+                    # The server validates CourseId on every write - a 400 here almost
+                    # always means the local course-catalog cache services.py checked
+                    # against is stale (see StudyLifeApiCourseRejectedError's docstring).
+                    # Distinct, actionable error instead of a raw ClientResponseError.
+                    response.release()
+                    course_id = json["courseId"]
+                    raise StudyLifeApiCourseRejectedError(
+                        course_id,
+                        f"{method} {url} returned 400 for courseId {course_id} - the local course catalog may be stale",
+                    )
                 if cached is not None and response.status == 304:
                     return cached[1]
                 response.raise_for_status()

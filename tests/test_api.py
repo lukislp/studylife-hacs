@@ -17,6 +17,7 @@ from aioresponses import aioresponses
 from custom_components.studylife.api import (
     StudyLifeApiAuthError,
     StudyLifeApiClient,
+    StudyLifeApiCourseRejectedError,
     StudyLifeApiEndpointMissingError,
     StudyLifeApiError,
 )
@@ -327,6 +328,78 @@ async def test_timeout_raises_api_error(client: StudyLifeApiClient) -> None:
         m.get(f"{BASE_URL}/api/settings", exception=asyncio.TimeoutError())
         with pytest.raises(StudyLifeApiError):
             await client.async_get_settings()
+
+
+# --------------------------------------------------------------------------
+# Stale-catalog 400 on writes that carry a courseId (create/update session,
+# set course goal, generate exam plan) - see StudyLifeApiCourseRejectedError.
+# --------------------------------------------------------------------------
+
+
+async def test_create_session_400_raises_course_rejected_error(client: StudyLifeApiClient) -> None:
+    """The server validates CourseId on every write - a 400 here means the local
+    course catalog (checked by services.py before this call) is stale, not a
+    generic failure. Must raise the distinct, actionable subclass with the
+    rejected course_id attached."""
+    body = {"courseId": 999, "startTime": "2026-01-06T10:00:00"}
+    with aioresponses() as m:
+        m.post(f"{BASE_URL}/api/sessions", status=400)
+        with pytest.raises(StudyLifeApiCourseRejectedError) as excinfo:
+            await client.async_create_session(body)
+    assert excinfo.value.course_id == 999
+    assert "999" in str(excinfo.value)
+    assert isinstance(excinfo.value, StudyLifeApiError)  # still catchable as the parent type
+
+
+async def test_update_session_400_raises_course_rejected_error(client: StudyLifeApiClient) -> None:
+    body = {"courseId": 999, "topic": "Graphs"}
+    with aioresponses() as m:
+        m.put(f"{BASE_URL}/api/sessions/42", status=400)
+        with pytest.raises(StudyLifeApiCourseRejectedError) as excinfo:
+            await client.async_update_session(42, body)
+    assert excinfo.value.course_id == 999
+
+
+async def test_set_course_goal_400_raises_course_rejected_error(client: StudyLifeApiClient) -> None:
+    goal = {"courseId": 999, "grade": 1.3}
+    with aioresponses() as m:
+        m.put(f"{BASE_URL}/api/coursegoals/999", status=400)
+        with pytest.raises(StudyLifeApiCourseRejectedError) as excinfo:
+            await client.async_set_course_goal(999, goal)
+    assert excinfo.value.course_id == 999
+
+
+async def test_generate_exam_plan_400_raises_course_rejected_error(client: StudyLifeApiClient) -> None:
+    request = {"courseId": 999, "examDate": "2026-06-01"}
+    with aioresponses() as m:
+        m.post(f"{BASE_URL}/api/planner/exam-plan", status=400)
+        with pytest.raises(StudyLifeApiCourseRejectedError) as excinfo:
+            await client.async_generate_exam_plan(request)
+    assert excinfo.value.course_id == 999
+
+
+async def test_400_without_course_id_in_payload_stays_generic_api_error(
+    client: StudyLifeApiClient,
+) -> None:
+    """The courseId-specific handling only applies to writes whose JSON body
+    actually carries a courseId - a 400 on a payload without one (e.g. PUT
+    /api/settings) must keep raising the plain StudyLifeApiError."""
+    settings = {"activeStudyProgramId": 2}
+    with aioresponses() as m:
+        m.put(f"{BASE_URL}/api/settings", status=400)
+        with pytest.raises(StudyLifeApiError) as excinfo:
+            await client.async_update_settings(settings)
+    assert not isinstance(excinfo.value, StudyLifeApiCourseRejectedError)
+
+
+async def test_400_on_get_stays_generic_api_error(client: StudyLifeApiClient) -> None:
+    """A 400 on a GET (no JSON body sent at all) must never be mistaken for the
+    courseId-write case."""
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/settings", status=400)
+        with pytest.raises(StudyLifeApiError) as excinfo:
+            await client.async_get_settings()
+    assert not isinstance(excinfo.value, StudyLifeApiCourseRejectedError)
 
 
 # --------------------------------------------------------------------------
