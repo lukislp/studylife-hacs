@@ -1,3 +1,11 @@
+## [1.5.1](https://github.com/lukislp/studylife-hacs/compare/v1.5.0...v1.5.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* release chain checks out branch tip to survive [skip ci] race ([7adf156](https://github.com/lukislp/studylife-hacs/commit/7adf156ad9a3c3772b072898fbf3d98bc3c135e9))
+* surface stale-catalog 400s on course writes as a clean HA error ([e116d4a](https://github.com/lukislp/studylife-hacs/commit/e116d4ac2720f3bd6117579545e991166ddc1569))
+
 # [1.5.0](https://github.com/lukislp/studylife-hacs/compare/v1.4.0...v1.5.0) (2026-08-26)
 
 
