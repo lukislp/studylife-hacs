@@ -6,6 +6,7 @@ for the DTO shapes.
 """
 from __future__ import annotations
 
+from collections.abc import Awaitable
 from datetime import datetime
 
 import homeassistant.util.dt as dt_util
@@ -15,6 +16,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 
+from .api import StudyLifeApiCourseRejectedError
 from .const import DOMAIN
 from .coordinator import StudyLifeCoordinator
 
@@ -131,6 +133,30 @@ def _require_course(coordinator: StudyLifeCoordinator, course_id: int) -> dict:
     return course
 
 
+async def _write_with_stale_catalog_handling(
+    coordinator: StudyLifeCoordinator, course_id: int, coro: Awaitable
+) -> None:
+    """Await a write API call that carries `course_id`, translating a server-side 400
+    (StudyLifeApiCourseRejectedError) into a clean, actionable HomeAssistantError.
+
+    _require_course above only guards against a course_id that was ALREADY unknown
+    when the catalog was last polled - it can't see a course that got completed/
+    removed server-side after that poll but before this write. That staleness
+    window is closed by the server's own CourseId validation, which then answers
+    400. On that 400 this also kicks off an immediate coordinator refresh so the
+    cache is current again for the user's next attempt, instead of waiting for the
+    next poll cycle."""
+    try:
+        await coro
+    except StudyLifeApiCourseRejectedError as err:
+        await coordinator.async_request_refresh()
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="course_rejected_by_server",
+            translation_placeholders={"course_id": str(course_id)},
+        ) from err
+
+
 def _resolve_coordinator(hass: HomeAssistant, call: ServiceCall) -> StudyLifeCoordinator:
     entries: dict[str, StudyLifeCoordinator] = hass.data.get(DOMAIN, {})
     if not entries:
@@ -191,7 +217,9 @@ async def async_register_services(hass: HomeAssistant) -> None:
             "isCompleted": False,
             "timerModeId": call.data.get("timer_mode_id", 1),
         }
-        await coordinator.client.async_create_session(payload)
+        await _write_with_stale_catalog_handling(
+            coordinator, course_id, coordinator.client.async_create_session(payload)
+        )
         await coordinator.async_request_refresh()
 
     async def handle_update_session(call: ServiceCall) -> None:
@@ -220,9 +248,10 @@ async def async_register_services(hass: HomeAssistant) -> None:
             course_name = existing.course_name
             course_color = existing.course_color
 
+        effective_course_id = new_course_id if new_course_id is not None else existing.course_id
         payload = {
             "id": session_id,
-            "courseId": new_course_id if new_course_id is not None else existing.course_id,
+            "courseId": effective_course_id,
             "courseName": course_name,
             "courseColor": course_color,
             "startTime": _to_naive_iso(call.data["start_time"]) if "start_time" in call.data else existing.start.isoformat(),
@@ -232,7 +261,9 @@ async def async_register_services(hass: HomeAssistant) -> None:
             "isCompleted": call.data.get("is_completed", existing.is_completed),
             "timerModeId": call.data.get("timer_mode_id", existing.timer_mode_id),
         }
-        await coordinator.client.async_update_session(session_id, payload)
+        await _write_with_stale_catalog_handling(
+            coordinator, effective_course_id, coordinator.client.async_update_session(session_id, payload)
+        )
         await coordinator.async_request_refresh()
 
     async def handle_delete_session(call: ServiceCall) -> None:
@@ -267,19 +298,24 @@ async def async_register_services(hass: HomeAssistant) -> None:
             ),
             "completedAt": existing.get("completedAt") if existing else None,
         }
-        await coordinator.client.async_set_course_goal(course_id, payload)
+        await _write_with_stale_catalog_handling(
+            coordinator, course_id, coordinator.client.async_set_course_goal(course_id, payload)
+        )
         await coordinator.async_request_refresh()
 
     async def handle_generate_exam_plan(call: ServiceCall) -> None:
         coordinator = _resolve_coordinator(hass, call)
         exam_date = call.data["exam_date"]
+        course_id = call.data["course_id"]
         request = {
-            "courseId": call.data["course_id"],
+            "courseId": course_id,
             "examDate": datetime.combine(exam_date, datetime.min.time()).isoformat(),
             "sessionLengthMinutes": call.data.get("session_length_minutes"),
             "totalHours": call.data.get("total_hours"),
         }
-        await coordinator.client.async_generate_exam_plan(request)
+        await _write_with_stale_catalog_handling(
+            coordinator, course_id, coordinator.client.async_generate_exam_plan(request)
+        )
         await coordinator.async_request_refresh()
 
     async def handle_set_active_program(call: ServiceCall) -> None:

@@ -21,6 +21,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.studylife.api import StudyLifeApiCourseRejectedError
 from custom_components.studylife.const import DOMAIN
 from custom_components.studylife.coordinator import StudyProgram
 from custom_components.studylife.services import _to_naive_iso, async_register_services
@@ -188,6 +189,42 @@ async def test_create_session_course_not_in_catalog(
     coordinator.async_request_refresh.assert_not_awaited()
 
 
+async def test_create_session_stale_catalog_400_raises_clean_error(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """The course_id passes the local catalog pre-check (_require_course) but the
+    server still answers 400 - the catalog cache was stale (course completed/
+    removed server-side since the last poll). Must surface a clean, actionable
+    HomeAssistantError naming the course_id, not the raw StudyLifeApiCourseRejectedError,
+    and must trigger an immediate coordinator refresh so the cache is current again."""
+    mock_config_entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_create_session.side_effect = StudyLifeApiCourseRejectedError(
+        100, "POST .../api/sessions returned 400 for courseId 100"
+    )
+    course = make_course(id=100, name="Algorithms")
+    coordinator = make_coordinator(client=client, data=make_coordinator_data(courses=[course]))
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
+    await _register(hass)
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN,
+            "create_session",
+            {
+                "course_id": 100,
+                "start_time": "2026-01-06T10:00:00",
+                "end_time": "2026-01-06T11:00:00",
+            },
+            blocking=True,
+        )
+
+    assert exc_info.value.translation_key == "course_rejected_by_server"
+    assert exc_info.value.translation_placeholders == {"course_id": "100"}
+    client.async_create_session.assert_awaited_once()
+    coordinator.async_request_refresh.assert_awaited_once()
+
+
 # ---------------------------------------------------------------------------
 # update_session
 # ---------------------------------------------------------------------------
@@ -326,6 +363,37 @@ async def test_update_session_unknown_course_id_raises_without_api_call(
     coordinator.async_request_refresh.assert_not_awaited()
 
 
+async def test_update_session_stale_catalog_400_raises_clean_error(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """Same staleness window as create_session: the session's existing course_id
+    passes the local catalog pre-check (it's not even re-checked when the course
+    isn't changing), but the server still answers 400 because that course was
+    completed/removed server-side since the last poll."""
+    mock_config_entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_update_session.side_effect = StudyLifeApiCourseRejectedError(
+        100, "PUT .../api/sessions/5 returned 400 for courseId 100"
+    )
+    existing = make_session(id=5, course_id=100, course_name="Algorithms", course_color="#ff0000")
+    coordinator = make_coordinator(client=client, data=make_coordinator_data(sessions=[existing]))
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
+    await _register(hass)
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN,
+            "update_session",
+            {"session_id": 5, "notes": "New notes"},
+            blocking=True,
+        )
+
+    assert exc_info.value.translation_key == "course_rejected_by_server"
+    assert exc_info.value.translation_placeholders == {"course_id": "100"}
+    client.async_update_session.assert_awaited_once()
+    coordinator.async_request_refresh.assert_awaited_once()
+
+
 async def test_update_session_not_found(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
     mock_config_entry.add_to_hass(hass)
     coordinator = make_coordinator(data=make_coordinator_data(sessions=[]))
@@ -441,6 +509,35 @@ async def test_set_course_goal_course_not_in_catalog(
     coordinator.async_request_refresh.assert_not_awaited()
 
 
+async def test_set_course_goal_stale_catalog_400_raises_clean_error(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """Same staleness window as create_session/update_session, for the course-goal
+    write path."""
+    mock_config_entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_set_course_goal.side_effect = StudyLifeApiCourseRejectedError(
+        100, "PUT .../api/coursegoals/100 returned 400 for courseId 100"
+    )
+    course = make_course(id=100, name="Algorithms")
+    coordinator = make_coordinator(client=client, data=make_coordinator_data(courses=[course]))
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
+    await _register(hass)
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN,
+            "set_course_goal",
+            {"course_id": 100, "grade": 1.7},
+            blocking=True,
+        )
+
+    assert exc_info.value.translation_key == "course_rejected_by_server"
+    assert exc_info.value.translation_placeholders == {"course_id": "100"}
+    client.async_set_course_goal.assert_awaited_once()
+    coordinator.async_request_refresh.assert_awaited_once()
+
+
 async def test_set_course_goal_course_not_in_catalog_even_with_existing_goal(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ) -> None:
@@ -496,6 +593,34 @@ async def test_generate_exam_plan_success(hass: HomeAssistant, mock_config_entry
     assert request["examDate"].startswith("2026-06-15")
     assert request["sessionLengthMinutes"] == 60
     assert request["totalHours"] == 20
+    coordinator.async_request_refresh.assert_awaited_once()
+
+
+async def test_generate_exam_plan_stale_catalog_400_raises_clean_error(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """generate_exam_plan also writes with a courseId (creating sessions server-side)
+    and is subject to the same catalog-staleness window as the other write services."""
+    mock_config_entry.add_to_hass(hass)
+    client = AsyncMock()
+    client.async_generate_exam_plan.side_effect = StudyLifeApiCourseRejectedError(
+        100, "POST .../api/planner/exam-plan returned 400 for courseId 100"
+    )
+    coordinator = make_coordinator(client=client)
+    hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
+    await _register(hass)
+
+    with pytest.raises(HomeAssistantError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN,
+            "generate_exam_plan",
+            {"course_id": 100, "exam_date": "2026-06-15"},
+            blocking=True,
+        )
+
+    assert exc_info.value.translation_key == "course_rejected_by_server"
+    assert exc_info.value.translation_placeholders == {"course_id": "100"}
+    client.async_generate_exam_plan.assert_awaited_once()
     coordinator.async_request_refresh.assert_awaited_once()
 
 
