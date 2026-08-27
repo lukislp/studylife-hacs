@@ -102,6 +102,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # ref: main (branch tip), NOT the push-event SHA: "[skip ci]" commits can land on
+          # main between the triggering push and this job actually running. semantic-release's
+          # "local branch is behind the remote" guard then analyzes a stale SHA and releases
+          # nothing - the entire release chain skips even though a releasable fix was just
+          # merged. Analyzing the branch tip makes the verdict immune to that race.
+          ref: main
           fetch-depth: 0
       - id: semrel
         uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
@@ -133,6 +139,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # ref: main for the same reason as get-version's checkout: the real release must be
+          # cut from the branch tip get-version analyzed, or the "behind the remote" guard trips
+          # whenever a [skip ci] commit raced in.
+          ref: main
           fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
