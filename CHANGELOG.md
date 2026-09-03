@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/lukislp/studylife-hacs/compare/v1.5.1...v1.5.2) (2026-09-03)
+
+
+### Bug Fixes
+
+* **ci:** add Dependabot for github-actions, pip ([5d7c959](https://github.com/lukislp/studylife-hacs/commit/5d7c95958423ac8042feda3a730f28e763251d77))
+
 ## [1.5.1](https://github.com/lukislp/studylife-hacs/compare/v1.5.0...v1.5.1) (2026-08-27)
 
 
