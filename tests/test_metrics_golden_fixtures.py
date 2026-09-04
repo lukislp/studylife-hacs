@@ -127,7 +127,13 @@ def _raw_summary_from_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
     it doesn't claim coverage of the endpoint's full response shape (test_openapi_contract.py
     and the fixture-derived tests in tests/conftest.py's make_raw_metrics_summary cover the
     wire shape itself; test_coordinator_calc.py covers the rest of the parsing surface with
-    hand-built inputs)."""
+    hand-built inputs).
+
+    "hours.week"/"hours.month" and "weekQuota.hours"/"monthQuota.hours" deliberately use TWO
+    DIFFERENT fixture fields (docs/ARCHITECTURE.md "Number semantics"): the former are
+    studied-only (expected.weekStudiedHours/monthStudiedHours), the latter count every
+    session planned in the window (expected.weekHours/monthHours) - same split
+    MetricsController.ComputeSummaryAsync makes server-side."""
     settings = scenario["settings"]
     expected = scenario["expected"]
     return {
@@ -135,9 +141,9 @@ def _raw_summary_from_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
         "program": {"id": None, "name": "StudyLife", "isBuiltIn": True},
         "streak": {"current": expected["streak"], "longest": expected["longestStreak"]},
         "hours": {
-            "week": expected["weekHours"],
-            "month": expected["monthHours"],
-            "total": expected["weekHours"],
+            "week": expected["weekStudiedHours"],
+            "month": expected["monthStudiedHours"],
+            "total": expected["weekStudiedHours"],
             "totalSessions": 0,
         },
         "weekQuota": {
@@ -167,7 +173,7 @@ def _raw_summary_from_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
             "recentWeeklyHours": expected["forecastRecentWeeklyHours"],
         },
         "monthComparison": {
-            "currentMonthHours": expected["monthHours"],
+            "currentMonthHours": expected["monthStudiedHours"],
             "previousMonthHours": 0.0,
             "deltaVsPreviousMonth": 0.0,
             "hasYearData": False,
@@ -197,11 +203,16 @@ def _run_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
     return {
         "streak": data.streak_days,
         "longestStreak": data.longest_streak_days,
-        "weekHours": data.week_hours,
+        # data.week_hours/month_hours are the studied-only DTO fields (hours.week/month);
+        # week_quota.hours/month_quota.hours stay the planned-window ones - see
+        # _raw_summary_from_scenario's docstring.
+        "weekStudiedHours": data.week_hours,
+        "weekQuotaHours": data.week_quota.hours,
         "weekQuotaPercent": data.week_quota.percent,
         "weekQuotaWarning": data.week_quota.warning,
         "weekQuotaMissingHours": data.week_quota.missing_hours,
-        "monthHours": data.month_hours,
+        "monthStudiedHours": data.month_hours,
+        "monthQuotaHours": data.month_quota.hours,
         "monthQuotaPercent": data.month_quota.percent,
         "monthQuotaWarning": data.month_quota.warning,
         "monthQuotaMissingHours": data.month_quota.missing_hours,
@@ -224,12 +235,14 @@ def _assert_matches(actual: dict[str, Any], expected: dict[str, Any]) -> None:
     assert actual["streak"] == expected["streak"]
     assert actual["longestStreak"] == expected["longestStreak"]
 
-    assert actual["weekHours"] == expected["weekHours"]
+    assert actual["weekStudiedHours"] == expected["weekStudiedHours"]
+    assert actual["weekQuotaHours"] == expected["weekHours"]
     assert actual["weekQuotaPercent"] == expected["weekQuotaPercent"]
     assert actual["weekQuotaWarning"] == expected["weekQuotaWarning"]
     assert actual["weekQuotaMissingHours"] == expected["weekQuotaMissingHours"]
 
-    assert actual["monthHours"] == expected["monthHours"]
+    assert actual["monthStudiedHours"] == expected["monthStudiedHours"]
+    assert actual["monthQuotaHours"] == expected["monthHours"]
     assert actual["monthQuotaPercent"] == expected["monthQuotaPercent"]
     assert actual["monthQuotaWarning"] == expected["monthQuotaWarning"]
     assert actual["monthQuotaMissingHours"] == expected["monthQuotaMissingHours"]
