@@ -1,3 +1,10 @@
+## [1.5.3](https://github.com/lukislp/studylife-hacs/compare/v1.5.2...v1.5.3) (2026-09-04)
+
+
+### Bug Fixes
+
+* read the studied-hours fields from the metrics fixture ([5449fc0](https://github.com/lukislp/studylife-hacs/commit/5449fc0eaa73fce4d49403cff87e9faf9b5416aa))
+
 ## [1.5.2](https://github.com/lukislp/studylife-hacs/compare/v1.5.1...v1.5.2) (2026-09-03)
 
 
