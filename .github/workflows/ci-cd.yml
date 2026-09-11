@@ -46,7 +46,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
-      - run: pip install ruff
+      - run: pip install --require-hashes -r requirements_lint.txt
       - run: ruff check .
 
   test-unit:
@@ -58,7 +58,7 @@ jobs:
           python-version: "3.13"
           cache: pip
           cache-dependency-path: requirements_test.txt
-      - run: pip install -r requirements_test.txt
+      - run: pip install --require-hashes -r requirements_test.txt
       # tests/test_openapi_contract.py (audit finding D2/D3) and tests/test_metrics_golden_
       # fixtures.py (audit finding D4) are a normal part of this `pytest tests/` run - they're
       # just two more modules under tests/. Called out here because they behave differently in
