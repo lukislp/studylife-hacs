@@ -1,6 +1,6 @@
 # StudyLife — Home Assistant Integration
 
-[![CI/CD](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml)
+[![CI/CD](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/lukislp/studylife-hacs/badge)](https://scorecard.dev/viewer/?uri=github.com/lukislp/studylife-hacs) [![CodeQL](https://github.com/lukislp/studylife-hacs/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/lukislp/studylife-hacs/security/code-scanning)
 [![Release](https://img.shields.io/github/v/release/lukislp/studylife-hacs)](https://github.com/lukislp/studylife-hacs/releases)
 [![License: MIT](https://img.shields.io/github/license/lukislp/studylife-hacs)](LICENSE)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
