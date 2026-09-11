@@ -1,3 +1,10 @@
+## [1.5.4](https://github.com/lukislp/studylife-hacs/compare/v1.5.3...v1.5.4) (2026-09-11)
+
+
+### Bug Fixes
+
+* **ci:** push release commits as a deploy key so the default branch can be ruleset-protected ([b948d8b](https://github.com/lukislp/studylife-hacs/commit/b948d8b73d1e03b0918c16fc96219a3eb6a96acb))
+
 ## [1.5.3](https://github.com/lukislp/studylife-hacs/compare/v1.5.2...v1.5.3) (2026-09-04)
 
 
