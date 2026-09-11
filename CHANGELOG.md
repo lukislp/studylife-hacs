@@ -1,3 +1,10 @@
+## [1.5.5](https://github.com/lukislp/studylife-hacs/compare/v1.5.4...v1.5.5) (2026-09-11)
+
+
+### Bug Fixes
+
+* **ci:** read-only GITHUB_TOKEN in the Dependabot auto-merge workflow ([f04d451](https://github.com/lukislp/studylife-hacs/commit/f04d451d093678302f3403d90fe8e105ce14bf07))
+
 ## [1.5.4](https://github.com/lukislp/studylife-hacs/compare/v1.5.3...v1.5.4) (2026-09-11)
 
 
