@@ -8,7 +8,12 @@ name: Dependabot auto-merge
 # events caused by GITHUB_TOKEN. Deliberately no checkout - PR code is never executed here.
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    # auto_merge_enabled: a PR that is already behind when someone arms auto-merge would
+    # otherwise wait for the next push to be brought up to date.
+    types: [opened, synchronize, reopened, auto_merge_enabled]
+  # Safety net for a PR armed while behind when nothing else is pushed for a while.
+  schedule:
+    - cron: "23 * * * *"
   # The default branch requires pull requests to be up to date before they merge (ruleset).
   # Every push to it therefore leaves the open Dependabot PRs "behind"; the update-stale job
   # below brings them back onto the tip so their auto-merge can proceed without a manual rebase.
@@ -21,7 +26,7 @@ permissions:
 
 jobs:
   auto-merge:
-    if: github.actor == 'dependabot[bot]'
+    if: github.event_name == 'pull_request_target' && github.event.action != 'auto_merge_enabled' && github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     env:
       HAS_TOKEN: ${{ secrets.AUTOMERGE_TOKEN != '' }}
@@ -38,7 +43,7 @@ jobs:
         run: echo "AUTOMERGE_TOKEN is not set - leaving this PR for a manual merge"
 
   update-stale:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event.action == 'auto_merge_enabled'
     runs-on: ubuntu-latest
     env:
       HAS_TOKEN: ${{ secrets.AUTOMERGE_TOKEN != '' }}
