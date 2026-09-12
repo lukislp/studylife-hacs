@@ -5,3 +5,8 @@ CLAUDE.md
 .coverage
 coverage.json
 coverage-badge.json
+
+# libFuzzer crash artifacts written by fuzz/ harnesses
+crash-*
+leak-*
+timeout-*
