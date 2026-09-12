@@ -143,16 +143,10 @@ jobs:
         with:
           deploy-key: ${{ secrets.SEMANTIC_RELEASE_DEPLOY_KEY }}
       - id: semrel
-        uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
+        uses: lukislp/ci-workflows/.github/actions/semantic-release@c1dd49d3d005e8912ab3420d5fdd7f3d9ee16adf # v1.2.2
         with:
-          dry_run: true
-          extra_plugins: |
-            @semantic-release/changelog@7.0.0
-            @semantic-release/exec@7.1.0
-            @semantic-release/github@12.0.9
-            @semantic-release/git@11.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          dry-run: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: No release needed for this push
         if: steps.semrel.outputs.new_release_published != 'true'
         run: |
@@ -198,15 +192,9 @@ jobs:
           path: coverage-artifact
       - run: mkdir -p .github/badges && mv coverage-artifact/coverage-badge.json .github/badges/coverage.json
       - id: semrel
-        uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
+        uses: lukislp/ci-workflows/.github/actions/semantic-release@c1dd49d3d005e8912ab3420d5fdd7f3d9ee16adf # v1.2.2
         with:
-          extra_plugins: |
-            @semantic-release/changelog@7.0.0
-            @semantic-release/exec@7.1.0
-            @semantic-release/github@12.0.9
-            @semantic-release/git@11.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
       # Retry once for the narrow window where an out-of-band push to main landed between
       # this job's checkout and its own push (the concurrency group above already serializes
@@ -224,12 +212,6 @@ jobs:
           fi
           git checkout -B main origin/main
       - if: steps.semrel.outcome == 'failure'
-        uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
+        uses: lukislp/ci-workflows/.github/actions/semantic-release@c1dd49d3d005e8912ab3420d5fdd7f3d9ee16adf # v1.2.2
         with:
-          extra_plugins: |
-            @semantic-release/changelog@7.0.0
-            @semantic-release/exec@7.1.0
-            @semantic-release/github@12.0.9
-            @semantic-release/git@11.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
