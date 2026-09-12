@@ -13,3 +13,9 @@ updates:
       interval: weekly
     commit-message:
       prefix: "fix(deps)"
+    # requirements_test.txt is a hash lock of pytest-homeassistant-custom-component, which pins
+    # Home Assistant and everything Home Assistant pins (cryptography among them) exactly; a
+    # security update Dependabot tries there can never resolve and only fails its job. These
+    # move with the next Home Assistant pin instead.
+    ignore:
+      - dependency-name: cryptography
