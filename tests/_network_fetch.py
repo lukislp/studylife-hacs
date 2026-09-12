@@ -18,12 +18,24 @@ test, so its adjustment is the last word instead of being immediately re-clamped
 """
 from __future__ import annotations
 
+import socket
+
 import pytest_socket
+
+# pytest-homeassistant-custom-component >= 0.13.36x additionally replaces socket.getaddrinfo /
+# gethostbyname with wrappers that refuse every non-IP hostname ("DNS resolution disabled in
+# tests"). That happens inside its per-test setup hook, so the originals captured here at
+# import (collection) time are the real ones.
+_REAL_GETADDRINFO = socket.getaddrinfo
+_REAL_GETHOSTBYNAME = socket.gethostbyname
 
 
 def allow_network_for(host: str) -> None:
-    """Re-enables real sockets for this test and narrows the allow-list to exactly `host`
-    (not a blanket allow-everything) - `host` is a bare hostname, e.g.
-    "raw.githubusercontent.com"."""
+    """Re-enables real sockets and DNS for this test and narrows the allow-list to exactly
+    `host` (not a blanket allow-everything) - `host` is a bare hostname, e.g.
+    "raw.githubusercontent.com". The plugin re-applies its blocks at the next test's setup."""
+    # DNS first: socket_allow_hosts itself resolves `host` through socket.getaddrinfo.
+    socket.getaddrinfo = _REAL_GETADDRINFO
+    socket.gethostbyname = _REAL_GETHOSTBYNAME
     pytest_socket.enable_socket()
     pytest_socket.socket_allow_hosts([host], allow_unix_socket=True)

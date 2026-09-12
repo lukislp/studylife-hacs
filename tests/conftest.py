@@ -334,3 +334,27 @@ def make_course_goal(
         "completedAt": completed_at,
         "completedTopics": completed_topics,
     }
+
+
+# aiohttp 3.14 (pinned by Home Assistant 2026.9) added a required `stream_writer` argument to
+# ClientResponse.__init__, which aioresponses 0.7.9 (the latest release) does not pass yet -
+# every mocked request would fail with a TypeError. Until aioresponses catches up, give the
+# class it instantiates a default for that argument. Test-only; nothing in the integration
+# touches this.
+import aiohttp as _aiohttp
+import aioresponses.core as _aioresponses_core
+
+
+class _NoUploadWriter:
+    """Stands in for the request body writer of an already-sent (mocked) request."""
+
+    output_size = 0
+
+
+class _CompatClientResponse(_aiohttp.ClientResponse):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs.setdefault("stream_writer", _NoUploadWriter())
+        super().__init__(*args, **kwargs)
+
+
+_aioresponses_core.ClientResponse = _CompatClientResponse
