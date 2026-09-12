@@ -1,3 +1,11 @@
+## [1.5.6](https://github.com/lukislp/studylife-hacs/compare/v1.5.5...v1.5.6) (2026-09-12)
+
+
+### Bug Fixes
+
+* **ci:** bump dependabot/fetch-metadata from 2.5.0 to 3.1.0 ([0bb0d3d](https://github.com/lukislp/studylife-hacs/commit/0bb0d3d60e053b9fee0227ea7cd92d430e383052))
+* **ci:** bump github/codeql-action/upload-sarif from 3.38.0 to 4.38.0 ([8467a31](https://github.com/lukislp/studylife-hacs/commit/8467a3158dff7b1efe561b9f882b53ed82a902bb))
+
 ## [1.5.5](https://github.com/lukislp/studylife-hacs/compare/v1.5.4...v1.5.5) (2026-09-11)
 
 
