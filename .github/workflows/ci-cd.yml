@@ -19,6 +19,7 @@ jobs:
   # ---------------------------------------------------------------------
   test-hacs-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Official HACS structural validation (hacs.json, manifest fields, etc.) - always
@@ -32,6 +33,7 @@ jobs:
 
   test-hassfest:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Home Assistant Core's own manifest/config-flow/translation validator - always
@@ -41,6 +43,7 @@ jobs:
 
   test-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -51,6 +54,7 @@ jobs:
 
   test-unit:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -87,6 +91,7 @@ jobs:
   # budget per run, enough to catch a crash on the next code change.
   fuzz:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -103,6 +108,7 @@ jobs:
     needs: [test-hacs-validation, test-hassfest, test-lint, test-unit]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     concurrency:
       group: studylife-hacs-release-chain
       cancel-in-progress: false
@@ -168,6 +174,7 @@ jobs:
     needs: [get-version]
     if: github.event_name == 'push' && needs.get-version.outputs.published == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     concurrency:
       group: studylife-hacs-release-chain
       cancel-in-progress: false
