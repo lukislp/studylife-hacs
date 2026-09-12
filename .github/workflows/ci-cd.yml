@@ -83,6 +83,22 @@ jobs:
   # ---------------------------------------------------------------------
   # Version / release — push to main only
   # ---------------------------------------------------------------------
+  # Coverage-guided fuzzing of the coordinator's API-payload parsers (fuzz/): a short fixed
+  # budget per run, enough to catch a crash on the next code change.
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+      - run: pip install --require-hashes -r requirements_test.txt -r requirements_fuzz.txt
+      - run: python fuzz/fuzz_coordinator.py -max_total_time=30 -rss_limit_mb=1024
+        env:
+          PYTHONPATH: .
+
   get-version:
     needs: [test-hacs-validation, test-hassfest, test-lint, test-unit]
     if: github.event_name == 'push'
