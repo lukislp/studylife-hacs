@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/lukislp/studylife-hacs/compare/v1.5.6...v1.6.0) (2026-09-13)
+
+
+### Features
+
+* require Home Assistant 2026.1 or newer ([#28](https://github.com/lukislp/studylife-hacs/issues/28)) ([5477e9c](https://github.com/lukislp/studylife-hacs/commit/5477e9c3756aa44aa8a6a3202acd74a203ff660f))
+
 ## [1.5.6](https://github.com/lukislp/studylife-hacs/compare/v1.5.5...v1.5.6) (2026-09-12)
 
 
