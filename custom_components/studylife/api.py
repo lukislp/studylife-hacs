@@ -22,6 +22,7 @@ runs (owner decision: every metric lives in exactly ONE place). Those two
 endpoints are newer than the rest of this API surface, so a server that
 predates them answers with a plain 404 - see StudyLifeApiEndpointMissingError.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -80,7 +81,9 @@ class StudyLifeApiCourseRejectedError(StudyLifeApiError):
 class StudyLifeApiClient:
     """Talks to /api/sessions, /api/settings, /api/notes and /api/coursegoals."""
 
-    def __init__(self, base_url: str, session: aiohttp.ClientSession, api_key: str | None = None) -> None:
+    def __init__(
+        self, base_url: str, session: aiohttp.ClientSession, api_key: str | None = None
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._session = session
         self._api_key = api_key or None
@@ -104,7 +107,12 @@ class StudyLifeApiClient:
         return self._api_key
 
     async def _request(
-        self, method: str, path: str, json: Any = None, *, missing_endpoint_hint: str | None = None
+        self,
+        method: str,
+        path: str,
+        json: Any = None,
+        *,
+        missing_endpoint_hint: str | None = None,
     ) -> Any:
         url = f"{self._base_url}{path}"
         headers = {"X-Api-Key": self._api_key} if self._api_key else {}
@@ -113,7 +121,9 @@ class StudyLifeApiClient:
             headers["If-None-Match"] = cached[0]
         try:
             async with asyncio.timeout(REQUEST_TIMEOUT):
-                response = await self._session.request(method, url, json=json, headers=headers)
+                response = await self._session.request(
+                    method, url, json=json, headers=headers
+                )
                 if response.status == 401:
                     # Key rejected - it was regenerated/revoked in the StudyLife app (the
                     # long-lived key never expires by itself). Distinct exception type so
@@ -131,8 +141,14 @@ class StudyLifeApiClient:
                     # be technically correct but useless to a user staring at an UpdateFailed
                     # notification, so this raises a distinct, actionable error instead.
                     response.release()
-                    raise StudyLifeApiEndpointMissingError(f"{method} {url} returned 404 - {missing_endpoint_hint}")
-                if response.status == 400 and isinstance(json, dict) and "courseId" in json:
+                    raise StudyLifeApiEndpointMissingError(
+                        f"{method} {url} returned 404 - {missing_endpoint_hint}"
+                    )
+                if (
+                    response.status == 400
+                    and isinstance(json, dict)
+                    and "courseId" in json
+                ):
                     # The server validates CourseId on every write - a 400 here almost
                     # always means the local course-catalog cache services.py checked
                     # against is stale (see StudyLifeApiCourseRejectedError's docstring).
@@ -163,16 +179,22 @@ class StudyLifeApiClient:
             raise StudyLifeApiError(f"Error fetching {url}: {err}") from err
 
     async def _get(self, path: str, *, missing_endpoint_hint: str | None = None) -> Any:
-        return await self._request("GET", path, missing_endpoint_hint=missing_endpoint_hint)
+        return await self._request(
+            "GET", path, missing_endpoint_hint=missing_endpoint_hint
+        )
 
     async def async_get_sessions(self) -> list[dict[str, Any]]:
         return await self._get("/api/sessions")
 
-    async def async_get_session_history(self, days: int = 400, only_completed: bool = False) -> list[dict[str, Any]]:
+    async def async_get_session_history(
+        self, days: int = 400, only_completed: bool = False
+    ) -> list[dict[str, Any]]:
         """Long-range session history - /api/sessions only covers ±7/90 days, too
         narrow for streak/month-quota calculations that look further back."""
         only_completed_param = "true" if only_completed else "false"
-        return await self._get(f"/api/sessions/history?days={days}&onlyCompleted={only_completed_param}")
+        return await self._get(
+            f"/api/sessions/history?days={days}&onlyCompleted={only_completed_param}"
+        )
 
     async def async_get_settings(self) -> dict[str, Any]:
         return await self._get("/api/settings")
@@ -183,7 +205,9 @@ class StudyLifeApiClient:
     async def async_get_course_goals(self) -> list[dict[str, Any]]:
         return await self._get("/api/coursegoals")
 
-    async def async_get_courses(self, program_id: int | None = None) -> list[dict[str, Any]]:
+    async def async_get_courses(
+        self, program_id: int | None = None
+    ) -> list[dict[str, Any]]:
         """Course catalog. Without `program_id` the server resolves the ACTIVE study
         programme from the settings; with one, that specific programme's catalog is
         returned (0 = the built-in catalog, matching CoursesController's convention).
@@ -202,7 +226,9 @@ class StudyLifeApiClient:
     async def async_get_timer_state(self) -> dict[str, Any]:
         return await self._get("/api/timerstate")
 
-    async def async_get_metrics_summary(self, program_id: int | None = None) -> dict[str, Any]:
+    async def async_get_metrics_summary(
+        self, program_id: int | None = None
+    ) -> dict[str, Any]:
         """GET /api/metrics/summary - every dashboard metric StudyLife.Shared computes for
         ONE study programme in a single response (streak, week/month quota, ECTS, average
         grade, forecast, course hours, neglected course, weekly report, topics, month
@@ -216,27 +242,45 @@ class StudyLifeApiClient:
         the server's own local clock is authoritative here, matching every other GET this
         client makes. (It would also defeat the ETag cache: a `now=` that changes every poll
         would make every request's cache key unique forever.)"""
-        path = "/api/metrics/summary" if program_id is None else f"/api/metrics/summary?program={program_id}"
-        return await self._get(path, missing_endpoint_hint=_METRICS_ENDPOINT_MISSING_HINT)
+        path = (
+            "/api/metrics/summary"
+            if program_id is None
+            else f"/api/metrics/summary?program={program_id}"
+        )
+        return await self._get(
+            path, missing_endpoint_hint=_METRICS_ENDPOINT_MISSING_HINT
+        )
 
-    async def async_get_metrics_achievements(self, program_id: int | None = None) -> dict[str, Any]:
+    async def async_get_metrics_achievements(
+        self, program_id: int | None = None
+    ) -> dict[str, Any]:
         """GET /api/metrics/achievements - all 44 achievement tiers' unlock state for ONE
         study programme, computed server-side from the exact aggregation
         RunAchievementCheckAsync/BuildAchievements use. Same `program_id` convention as
         async_get_metrics_summary."""
-        path = "/api/metrics/achievements" if program_id is None else f"/api/metrics/achievements?program={program_id}"
-        return await self._get(path, missing_endpoint_hint=_METRICS_ENDPOINT_MISSING_HINT)
+        path = (
+            "/api/metrics/achievements"
+            if program_id is None
+            else f"/api/metrics/achievements?program={program_id}"
+        )
+        return await self._get(
+            path, missing_endpoint_hint=_METRICS_ENDPOINT_MISSING_HINT
+        )
 
     async def async_create_session(self, session: dict[str, Any]) -> dict[str, Any]:
         return await self._request("POST", "/api/sessions", json=session)
 
-    async def async_update_session(self, session_id: int, session: dict[str, Any]) -> dict[str, Any]:
+    async def async_update_session(
+        self, session_id: int, session: dict[str, Any]
+    ) -> dict[str, Any]:
         return await self._request("PUT", f"/api/sessions/{session_id}", json=session)
 
     async def async_delete_session(self, session_id: int) -> None:
         await self._request("DELETE", f"/api/sessions/{session_id}")
 
-    async def async_set_course_goal(self, course_id: int, goal: dict[str, Any]) -> dict[str, Any]:
+    async def async_set_course_goal(
+        self, course_id: int, goal: dict[str, Any]
+    ) -> dict[str, Any]:
         return await self._request("PUT", f"/api/coursegoals/{course_id}", json=goal)
 
     async def async_update_settings(self, settings: dict[str, Any]) -> dict[str, Any]:
@@ -246,7 +290,9 @@ class StudyLifeApiClient:
         services.py's handle_update_session/handle_set_course_goal)."""
         return await self._request("PUT", "/api/settings", json=settings)
 
-    async def async_generate_exam_plan(self, request: dict[str, Any]) -> list[dict[str, Any]]:
+    async def async_generate_exam_plan(
+        self, request: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Server-side exam backward-planner (mirrors the browser's Planner page) - spreads
         the course's open topics across free calendar slots up to the exam date and creates
         the sessions directly (no preview step, since there's no browser to confirm one)."""

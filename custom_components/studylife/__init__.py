@@ -1,4 +1,5 @@
 """The StudyLife integration."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -21,14 +22,21 @@ from .services import (
     async_register_services,
 )
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.CALENDAR, Platform.SELECT]
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.CALENDAR,
+    Platform.SELECT,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = async_get_clientsession(hass)
     # Since phase 3, the key is per-user and long-lived (no more server-side rotation) -
     # the former X-Api-Key-Rotated adoption logic and its persist callback are gone.
-    client = StudyLifeApiClient(entry.data[CONF_URL], session, entry.data.get(CONF_API_KEY))
+    client = StudyLifeApiClient(
+        entry.data[CONF_URL], session, entry.data.get(CONF_API_KEY)
+    )
 
     scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     coordinator = StudyLifeCoordinator(hass, client, timedelta(seconds=scan_interval))

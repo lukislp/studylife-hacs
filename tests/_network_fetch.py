@@ -16,6 +16,7 @@ the separate "block connect() to any host but 127.0.0.1" half stays in effect, b
 INSIDE a fixture or test body - i.e. after `pytest_runtest_setup` has already fired for this
 test, so its adjustment is the last word instead of being immediately re-clamped.
 """
+
 from __future__ import annotations
 
 import socket

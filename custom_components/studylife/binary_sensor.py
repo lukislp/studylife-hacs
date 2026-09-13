@@ -6,6 +6,7 @@ the programme's manual completion flag and whether it's the one the app
 currently treats as active - same discovery/removal semantics as the
 per-programme sensors (see sensor.py's module docstring).
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -77,7 +78,9 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[StudyLifeBinarySensorDescription, ...] = (
 )
 
 
-PROGRAM_BINARY_SENSOR_DESCRIPTIONS: tuple[StudyLifeProgramBinarySensorDescription, ...] = (
+PROGRAM_BINARY_SENSOR_DESCRIPTIONS: tuple[
+    StudyLifeProgramBinarySensorDescription, ...
+] = (
     StudyLifeProgramBinarySensorDescription(
         # The programme's MANUAL completion flag (PUT /api/studyprograms/{id}/completed,
         # set via the web UI) - never flipped automatically, not even at 100% ECTS.
@@ -117,7 +120,9 @@ async def async_setup_entry(
     known_program_ids: set[str] = set()
 
     def _sync_program_entities() -> None:
-        new_ids = [pid for pid in coordinator.data.programs if pid not in known_program_ids]
+        new_ids = [
+            pid for pid in coordinator.data.programs if pid not in known_program_ids
+        ]
         if not new_ids:
             return
         entities: list[StudyLifeProgramBinarySensor] = []
@@ -125,7 +130,9 @@ async def async_setup_entry(
             known_program_ids.add(pid)
             program_name = coordinator.data.programs[pid].program.name
             entities.extend(
-                StudyLifeProgramBinarySensor(coordinator, entry, description, pid, program_name)
+                StudyLifeProgramBinarySensor(
+                    coordinator, entry, description, pid, program_name
+                )
                 for description in PROGRAM_BINARY_SENSOR_DESCRIPTIONS
             )
         async_add_entities(entities)
@@ -175,7 +182,9 @@ class StudyLifeProgramBinarySensor(StudyLifeProgramEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         program = self.program_data
-        return self.entity_description.value_fn(program) if program is not None else None
+        return (
+            self.entity_description.value_fn(program) if program is not None else None
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

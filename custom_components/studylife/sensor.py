@@ -13,6 +13,7 @@ Two kinds:
   the StudyLife web UI. Deleted programmes are NOT removed from the registry -
   their entities just flip to unavailable (see StudyLifeProgramEntity).
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -155,15 +156,21 @@ def _achievements_attrs(data: StudyLifeData) -> dict[str, Any]:
 
 
 def _motivational_style_attrs(data: StudyLifeData) -> dict[str, Any]:
-    tag_by_course_id = {g["courseId"]: g["tag"] for g in data.course_goals if g.get("tag")}
+    tag_by_course_id = {
+        g["courseId"]: g["tag"] for g in data.course_goals if g.get("tag")
+    }
     return {
         "theme": data.settings.get("theme"),
         "auto_switch_focus": data.settings.get("autoSwitchFocus"),
         "auto_switch_minutes_before": data.settings.get("autoSwitchMinutesBefore"),
         "selected_course_ids": data.settings.get("selectedCourseIds"),
         "completed_course_ids": data.settings.get("completedCourseIds"),
-        "selected_courses": _resolve_courses(data.settings.get("selectedCourseIds"), data.courses, tag_by_course_id),
-        "completed_courses": _resolve_courses(data.settings.get("completedCourseIds"), data.courses, tag_by_course_id),
+        "selected_courses": _resolve_courses(
+            data.settings.get("selectedCourseIds"), data.courses, tag_by_course_id
+        ),
+        "completed_courses": _resolve_courses(
+            data.settings.get("completedCourseIds"), data.courses, tag_by_course_id
+        ),
         "session_reminder_minutes": data.settings.get("sessionReminderMinutes"),
         "course_goal_reminder_days": data.settings.get("courseGoalReminderDays"),
         "inactivity_threshold_days": data.settings.get("inactivityThresholdDays"),
@@ -175,14 +182,18 @@ SENSOR_DESCRIPTIONS: tuple[StudyLifeSensorDescription, ...] = (
         key="active_session",
         translation_key="active_session",
         icon="mdi:book-open-page-variant",
-        value_fn=lambda data: data.active_session.course_name if data.active_session else "none",
+        value_fn=lambda data: (
+            data.active_session.course_name if data.active_session else "none"
+        ),
         attrs_fn=lambda data: _session_attrs(data.active_session),
     ),
     StudyLifeSensorDescription(
         key="next_session",
         translation_key="next_session",
         icon="mdi:clock-outline",
-        value_fn=lambda data: data.upcoming_session.course_name if data.upcoming_session else "none",
+        value_fn=lambda data: (
+            data.upcoming_session.course_name if data.upcoming_session else "none"
+        ),
         attrs_fn=lambda data: _session_attrs(data.upcoming_session),
     ),
     StudyLifeSensorDescription(
@@ -190,21 +201,27 @@ SENSOR_DESCRIPTIONS: tuple[StudyLifeSensorDescription, ...] = (
         translation_key="next_session_start",
         icon="mdi:calendar-arrow-right",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda data: _as_local(data.upcoming_session.start if data.upcoming_session else None),
+        value_fn=lambda data: _as_local(
+            data.upcoming_session.start if data.upcoming_session else None
+        ),
     ),
     StudyLifeSensorDescription(
         key="next_session_end",
         translation_key="next_session_end",
         icon="mdi:calendar-arrow-right",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda data: _as_local(data.upcoming_session.end if data.upcoming_session else None),
+        value_fn=lambda data: _as_local(
+            data.upcoming_session.end if data.upcoming_session else None
+        ),
     ),
     StudyLifeSensorDescription(
         key="active_session_end",
         translation_key="active_session_end",
         icon="mdi:calendar-check",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda data: _as_local(data.active_session.end if data.active_session else None),
+        value_fn=lambda data: _as_local(
+            data.active_session.end if data.active_session else None
+        ),
     ),
     StudyLifeSensorDescription(
         key="today_sessions",
@@ -337,11 +354,15 @@ SENSOR_DESCRIPTIONS: tuple[StudyLifeSensorDescription, ...] = (
         key="neglected_course",
         translation_key="neglected_course",
         icon="mdi:scale-balance",
-        value_fn=lambda data: data.neglected_course.course_name if data.neglected_course else "none",
+        value_fn=lambda data: (
+            data.neglected_course.course_name if data.neglected_course else "none"
+        ),
         attrs_fn=lambda data: (
             {
                 "course_id": data.neglected_course.course_id,
-                "last_studied": data.neglected_course.last_studied.isoformat() if data.neglected_course.last_studied else None,
+                "last_studied": data.neglected_course.last_studied.isoformat()
+                if data.neglected_course.last_studied
+                else None,
                 "days_since": data.neglected_course.days_since,
             }
             if data.neglected_course
@@ -374,7 +395,9 @@ SENSOR_DESCRIPTIONS: tuple[StudyLifeSensorDescription, ...] = (
         value_fn=lambda data: data.topics_completed,
         attrs_fn=lambda data: {
             "topics_total": data.topics_total,
-            "percent": round(data.topics_completed / data.topics_total * 100, 1) if data.topics_total else 0,
+            "percent": round(data.topics_completed / data.topics_total * 100, 1)
+            if data.topics_total
+            else 0,
             "courses": data.topics_by_course,
         },
     ),
@@ -388,7 +411,11 @@ SENSOR_DESCRIPTIONS: tuple[StudyLifeSensorDescription, ...] = (
         attrs_fn=lambda data: {
             "delta_vs_last_month_hours": round(data.month_hours_delta_vs_last_month, 2),
             **(
-                {"delta_vs_last_year_hours": round(data.month_hours_delta_vs_last_year, 2)}
+                {
+                    "delta_vs_last_year_hours": round(
+                        data.month_hours_delta_vs_last_year, 2
+                    )
+                }
                 if data.month_hours_delta_vs_last_year is not None
                 else {}
             ),
@@ -408,7 +435,9 @@ SENSOR_DESCRIPTIONS: tuple[StudyLifeSensorDescription, ...] = (
             "program_id": data.active_study_program.id,
             "is_built_in": data.active_study_program.is_built_in,
             "programs_count": len(data.study_programs),
-            "completed_programs_count": sum(1 for p in data.study_programs if p.is_completed),
+            "completed_programs_count": sum(
+                1 for p in data.study_programs if p.is_completed
+            ),
             "programs": [dataclasses.asdict(p) for p in data.study_programs],
         },
     ),
@@ -435,6 +464,7 @@ SENSOR_DESCRIPTIONS: tuple[StudyLifeSensorDescription, ...] = (
 class StudyLifeProgramSensorDescription(SensorEntityDescription):
     """Like StudyLifeSensorDescription, but value/attrs derive from ONE
     programme's StudyLifeProgramData instead of the global StudyLifeData."""
+
     value_fn: Callable[[StudyLifeProgramData], Any] = lambda program: None
     attrs_fn: Callable[[StudyLifeProgramData], dict[str, Any]] = lambda program: {}
 
@@ -449,7 +479,9 @@ PROGRAM_SENSOR_DESCRIPTIONS: tuple[StudyLifeProgramSensorDescription, ...] = (
         value_fn=lambda program: program.ects_earned,
         attrs_fn=lambda program: {
             "ects_total": program.ects_total,
-            "percent": round(program.ects_earned / program.ects_total * 100, 1) if program.ects_total else 0,
+            "percent": round(program.ects_earned / program.ects_total * 100, 1)
+            if program.ects_total
+            else 0,
         },
     ),
     StudyLifeProgramSensorDescription(
@@ -462,7 +494,11 @@ PROGRAM_SENSOR_DESCRIPTIONS: tuple[StudyLifeProgramSensorDescription, ...] = (
         attrs_fn=lambda program: {
             "weighted_by_ects": True,
             "graded_courses": [
-                {"course_id": g["courseId"], "course_name": g["courseName"], "grade": g["grade"]}
+                {
+                    "course_id": g["courseId"],
+                    "course_name": g["courseName"],
+                    "grade": g["grade"],
+                }
                 for g in program.course_goals
                 if g.get("grade") is not None
             ],
@@ -521,7 +557,9 @@ PROGRAM_SENSOR_DESCRIPTIONS: tuple[StudyLifeProgramSensorDescription, ...] = (
         key="next_course_goal",
         translation_key="next_course_goal",
         icon="mdi:flag-checkered",
-        value_fn=lambda program: program.next_course_goal.course_name if program.next_course_goal else "none",
+        value_fn=lambda program: (
+            program.next_course_goal.course_name if program.next_course_goal else "none"
+        ),
         attrs_fn=lambda program: {
             **(
                 {
@@ -550,7 +588,9 @@ PROGRAM_SENSOR_DESCRIPTIONS: tuple[StudyLifeProgramSensorDescription, ...] = (
         translation_key="next_course_goal_date",
         icon="mdi:calendar-alert",
         device_class=SensorDeviceClass.DATE,
-        value_fn=lambda program: program.next_course_goal.target_date if program.next_course_goal else None,
+        value_fn=lambda program: (
+            program.next_course_goal.target_date if program.next_course_goal else None
+        ),
     ),
     StudyLifeProgramSensorDescription(
         key="courses",
@@ -573,7 +613,8 @@ async def async_setup_entry(
 ) -> None:
     coordinator: StudyLifeCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        StudyLifeSensor(coordinator, entry, description) for description in SENSOR_DESCRIPTIONS
+        StudyLifeSensor(coordinator, entry, description)
+        for description in SENSOR_DESCRIPTIONS
     )
 
     # One full per-programme sensor set per study programme. The first refresh has
@@ -585,7 +626,9 @@ async def async_setup_entry(
     known_program_ids: set[str] = set()
 
     def _sync_program_entities() -> None:
-        new_ids = [pid for pid in coordinator.data.programs if pid not in known_program_ids]
+        new_ids = [
+            pid for pid in coordinator.data.programs if pid not in known_program_ids
+        ]
         if not new_ids:
             return
         entities: list[StudyLifeProgramSensor] = []
@@ -593,7 +636,9 @@ async def async_setup_entry(
             known_program_ids.add(pid)
             program_name = coordinator.data.programs[pid].program.name
             entities.extend(
-                StudyLifeProgramSensor(coordinator, entry, description, pid, program_name)
+                StudyLifeProgramSensor(
+                    coordinator, entry, description, pid, program_name
+                )
                 for description in PROGRAM_SENSOR_DESCRIPTIONS
             )
         async_add_entities(entities)
@@ -646,7 +691,9 @@ class StudyLifeProgramSensor(StudyLifeProgramEntity, SensorEntity):
     @property
     def native_value(self) -> Any:
         program = self.program_data
-        return self.entity_description.value_fn(program) if program is not None else None
+        return (
+            self.entity_description.value_fn(program) if program is not None else None
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

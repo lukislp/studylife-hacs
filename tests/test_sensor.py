@@ -7,6 +7,7 @@ sensor discovery. The lower-level "program deleted" defensiveness of
 StudyLifeProgramSensor is covered separately, without a full hass setup, since
 it doesn't depend on any of that wiring.
 """
+
 from __future__ import annotations
 
 from unittest.mock import Mock
@@ -41,9 +42,15 @@ FROZEN_NOW = "2026-01-08 12:00:00"
 
 
 def _sensor_id(
-    hass: HomeAssistant, entry: MockConfigEntry, key: str, *, program_id: str | None = None
+    hass: HomeAssistant,
+    entry: MockConfigEntry,
+    key: str,
+    *,
+    program_id: str | None = None,
 ) -> str | None:
-    return get_entity_id(hass, entry.entry_id, key, program_id=program_id, platform="sensor")
+    return get_entity_id(
+        hass, entry.entry_id, key, program_id=program_id, platform="sensor"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +72,9 @@ async def test_week_hours_and_streak_reflect_coordinator_data(
 
     await setup_integration(hass, mock_config_entry, mock_api_client)
 
-    week_hours_state = hass.states.get(_sensor_id(hass, mock_config_entry, "week_hours"))
+    week_hours_state = hass.states.get(
+        _sensor_id(hass, mock_config_entry, "week_hours")
+    )
     streak_state = hass.states.get(_sensor_id(hass, mock_config_entry, "streak"))
 
     assert week_hours_state is not None
@@ -81,7 +90,10 @@ async def test_week_hours_zero_with_no_sessions(
     """No sessions at all -> week_hours/streak both read 0, not an error/unknown."""
     await setup_integration(hass, mock_config_entry, mock_api_client)
 
-    assert hass.states.get(_sensor_id(hass, mock_config_entry, "week_hours")).state == "0.0"
+    assert (
+        hass.states.get(_sensor_id(hass, mock_config_entry, "week_hours")).state
+        == "0.0"
+    )
     assert hass.states.get(_sensor_id(hass, mock_config_entry, "streak")).state == "0"
 
 
@@ -134,19 +146,25 @@ async def test_per_programme_sensors_created_for_every_programme(
         0: [make_course(id=100, name="Algorithms", ects=5, semester=1)],
         7: [make_course(id=200, name="Databases", ects=8, semester=1)],
     }
-    mock_api_client.async_get_courses.side_effect = lambda pid: courses_by_pid.get(pid, [])
+    mock_api_client.async_get_courses.side_effect = lambda pid: courses_by_pid.get(
+        pid, []
+    )
     # ects_earned/ects_total now come from GET /api/metrics/summary?program={id} - the
     # per-programme fan-out calls it once per programme, so the mock must answer per pid
     # too (same pattern as async_get_courses.side_effect above), not a single shared
     # return_value.
     ects_total_by_pid = {0: 5, 7: 8}
-    mock_api_client.async_get_metrics_summary.side_effect = lambda pid: make_raw_metrics_summary(
-        ects_earned=0, ects_total=ects_total_by_pid.get(pid, 0)
+    mock_api_client.async_get_metrics_summary.side_effect = lambda pid: (
+        make_raw_metrics_summary(
+            ects_earned=0, ects_total=ects_total_by_pid.get(pid, 0)
+        )
     )
 
     await setup_integration(hass, mock_config_entry, mock_api_client)
 
-    builtin_id = _sensor_id(hass, mock_config_entry, "ects_progress", program_id="builtin")
+    builtin_id = _sensor_id(
+        hass, mock_config_entry, "ects_progress", program_id="builtin"
+    )
     master_id = _sensor_id(hass, mock_config_entry, "ects_progress", program_id="7")
     assert builtin_id is not None
     assert master_id is not None
@@ -182,13 +200,16 @@ async def test_programme_added_later_gets_entities_via_coordinator_listener(
     # same as async_get_courses.side_effect above (a single shared return_value can't tell
     # the built-in and the new programme's calls apart).
     ects_total_by_pid = {0: 5}
-    mock_api_client.async_get_metrics_summary.side_effect = lambda pid: make_raw_metrics_summary(
-        ects_total=ects_total_by_pid.get(pid, 0)
+    mock_api_client.async_get_metrics_summary.side_effect = lambda pid: (
+        make_raw_metrics_summary(ects_total=ects_total_by_pid.get(pid, 0))
     )
 
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 
-    assert _sensor_id(hass, mock_config_entry, "ects_progress", program_id="builtin") is not None
+    assert (
+        _sensor_id(hass, mock_config_entry, "ects_progress", program_id="builtin")
+        is not None
+    )
     assert _sensor_id(hass, mock_config_entry, "ects_progress", program_id="9") is None
 
     # A programme created later via the StudyLife web UI shows up on the next poll.
@@ -232,7 +253,9 @@ async def test_deleted_programme_entity_becomes_unavailable(
         0: [make_course(id=100, name="Algorithms", ects=5, semester=1)],
         7: [make_course(id=200, name="Databases", ects=8, semester=1)],
     }
-    mock_api_client.async_get_courses.side_effect = lambda pid: courses_by_pid.get(pid, [])
+    mock_api_client.async_get_courses.side_effect = lambda pid: courses_by_pid.get(
+        pid, []
+    )
 
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 
@@ -244,13 +267,18 @@ async def test_deleted_programme_entity_becomes_unavailable(
     mock_api_client.async_get_study_programs.return_value = [
         make_raw_study_program(id=None, name="Bachelor", is_built_in=True),
     ]
-    mock_api_client.async_get_courses.side_effect = lambda pid: courses_by_pid.get(0, []) if pid == 0 else []
+    mock_api_client.async_get_courses.side_effect = lambda pid: (
+        courses_by_pid.get(0, []) if pid == 0 else []
+    )
 
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 
     # Entity is NOT removed from the registry - it flips to unavailable instead.
-    assert _sensor_id(hass, mock_config_entry, "ects_progress", program_id="7") == master_id
+    assert (
+        _sensor_id(hass, mock_config_entry, "ects_progress", program_id="7")
+        == master_id
+    )
     state = hass.states.get(master_id)
     assert state is not None
     assert state.state == STATE_UNAVAILABLE
@@ -264,7 +292,9 @@ async def test_deleted_programme_entity_becomes_unavailable(
 # ---------------------------------------------------------------------------
 
 
-def test_program_sensor_returns_none_and_empty_attrs_when_program_data_missing() -> None:
+def test_program_sensor_returns_none_and_empty_attrs_when_program_data_missing() -> (
+    None
+):
     coordinator = Mock()
     coordinator.data.programs = {}  # the programme isn't (or no longer is) known
     entry = Mock()
@@ -272,7 +302,9 @@ def test_program_sensor_returns_none_and_empty_attrs_when_program_data_missing()
     entry.data = {}
 
     for description in PROGRAM_SENSOR_DESCRIPTIONS:
-        entity = StudyLifeProgramSensor(coordinator, entry, description, "builtin", "Bachelor")
+        entity = StudyLifeProgramSensor(
+            coordinator, entry, description, "builtin", "Bachelor"
+        )
         assert entity.native_value is None, description.key
         assert entity.extra_state_attributes == {}, description.key
 
@@ -323,20 +355,54 @@ def test_excerpt_truncates_long_content() -> None:
 
 
 def test_resolve_courses_returns_empty_list_for_no_course_ids() -> None:
-    catalog = [{"id": 1, "name": "Algorithms", "code": "CS101", "icon": "mdi:code", "color": "#ff0000"}]
+    catalog = [
+        {
+            "id": 1,
+            "name": "Algorithms",
+            "code": "CS101",
+            "icon": "mdi:code",
+            "color": "#ff0000",
+        }
+    ]
     assert _resolve_courses(None, catalog, {}) == []
     assert _resolve_courses([], catalog, {}) == []
 
 
 def test_resolve_courses_maps_ids_to_catalog_entries_with_tags() -> None:
     catalog = [
-        {"id": 1, "name": "Algorithms", "code": "CS101", "icon": "mdi:code", "color": "#ff0000"},
-        {"id": 2, "name": "Databases", "code": "CS102", "icon": "mdi:database", "color": "#00ff00"},
+        {
+            "id": 1,
+            "name": "Algorithms",
+            "code": "CS101",
+            "icon": "mdi:code",
+            "color": "#ff0000",
+        },
+        {
+            "id": 2,
+            "name": "Databases",
+            "code": "CS102",
+            "icon": "mdi:database",
+            "color": "#00ff00",
+        },
     ]
     # Unknown course IDs (e.g. stale selection after a catalog change) are silently skipped,
     # not a KeyError.
     result = _resolve_courses([1, 2, 999], catalog, {1: "exam soon"})
     assert result == [
-        {"id": 1, "name": "Algorithms", "code": "CS101", "icon": "mdi:code", "color": "#ff0000", "tag": "exam soon"},
-        {"id": 2, "name": "Databases", "code": "CS102", "icon": "mdi:database", "color": "#00ff00", "tag": None},
+        {
+            "id": 1,
+            "name": "Algorithms",
+            "code": "CS101",
+            "icon": "mdi:code",
+            "color": "#ff0000",
+            "tag": "exam soon",
+        },
+        {
+            "id": 2,
+            "name": "Databases",
+            "code": "CS102",
+            "icon": "mdi:database",
+            "color": "#00ff00",
+            "tag": None,
+        },
     ]

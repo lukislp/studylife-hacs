@@ -12,6 +12,7 @@ frozen via freezegun where "now" matters) rather than hard-coded clock times,
 to stay correct regardless of the test machine's/HA test fixture's configured
 timezone.
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
@@ -85,12 +86,16 @@ async def test_sessions_event_returns_in_progress_not_past_session(
     with freeze_time("2026-08-05 12:00:00"):
         now = dt_util.now().replace(tzinfo=None)
         in_progress = make_session(
-            id=1, course_name="In Progress",
-            start=now - timedelta(minutes=30), end=now + timedelta(minutes=30),
+            id=1,
+            course_name="In Progress",
+            start=now - timedelta(minutes=30),
+            end=now + timedelta(minutes=30),
         )
         past = make_session(
-            id=2, course_name="Long Past",
-            start=now - timedelta(hours=3), end=now - timedelta(hours=2),
+            id=2,
+            course_name="Long Past",
+            start=now - timedelta(hours=3),
+            end=now - timedelta(hours=2),
         )
         entity = _build_sessions_calendar(hass, mock_config_entry, [past, in_progress])
 
@@ -106,7 +111,9 @@ async def test_sessions_event_is_none_when_nothing_ends_in_future(
     with freeze_time("2026-08-05 12:00:00"):
         now = dt_util.now().replace(tzinfo=None)
         past = make_session(
-            id=1, start=now - timedelta(hours=3), end=now - timedelta(hours=2),
+            id=1,
+            start=now - timedelta(hours=3),
+            end=now - timedelta(hours=2),
         )
         entity = _build_sessions_calendar(hass, mock_config_entry, [past])
 
@@ -128,37 +135,58 @@ async def test_sessions_async_get_events_window_filtering(
     window_end = dt_util.as_local(_naive(2026, 1, 10, 23, 59, 59))
 
     fully_before = make_session(
-        id=1, course_name="Fully Before",
-        start=_naive(2026, 1, 9, 10, 0), end=_naive(2026, 1, 9, 11, 0),
+        id=1,
+        course_name="Fully Before",
+        start=_naive(2026, 1, 9, 10, 0),
+        end=_naive(2026, 1, 9, 11, 0),
     )
     fully_after = make_session(
-        id=2, course_name="Fully After",
-        start=_naive(2026, 1, 11, 10, 0), end=_naive(2026, 1, 11, 11, 0),
+        id=2,
+        course_name="Fully After",
+        start=_naive(2026, 1, 11, 10, 0),
+        end=_naive(2026, 1, 11, 11, 0),
     )
     fully_inside = make_session(
-        id=3, course_name="Fully Inside",
-        start=_naive(2026, 1, 10, 9, 0), end=_naive(2026, 1, 10, 10, 0),
+        id=3,
+        course_name="Fully Inside",
+        start=_naive(2026, 1, 10, 9, 0),
+        end=_naive(2026, 1, 10, 10, 0),
     )
     # Ends exactly at window_start (boundary: end >= start_date is inclusive).
     touches_start_boundary = make_session(
-        id=4, course_name="Touches Start Boundary",
-        start=_naive(2026, 1, 9, 23, 0), end=_naive(2026, 1, 10, 0, 0),
+        id=4,
+        course_name="Touches Start Boundary",
+        start=_naive(2026, 1, 9, 23, 0),
+        end=_naive(2026, 1, 10, 0, 0),
     )
     # Starts exactly at window_end (boundary: start <= end_date is inclusive).
     touches_end_boundary = make_session(
-        id=5, course_name="Touches End Boundary",
-        start=_naive(2026, 1, 10, 23, 59, 59), end=_naive(2026, 1, 11, 1, 0),
+        id=5,
+        course_name="Touches End Boundary",
+        start=_naive(2026, 1, 10, 23, 59, 59),
+        end=_naive(2026, 1, 11, 1, 0),
     )
 
     entity = _build_sessions_calendar(
-        hass, mock_config_entry,
-        [fully_before, fully_after, fully_inside, touches_start_boundary, touches_end_boundary],
+        hass,
+        mock_config_entry,
+        [
+            fully_before,
+            fully_after,
+            fully_inside,
+            touches_start_boundary,
+            touches_end_boundary,
+        ],
     )
 
     events = await entity.async_get_events(hass, window_start, window_end)
     summaries = {e.summary for e in events}
 
-    assert summaries == {"Fully Inside", "Touches Start Boundary", "Touches End Boundary"}
+    assert summaries == {
+        "Fully Inside",
+        "Touches Start Boundary",
+        "Touches End Boundary",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -179,11 +207,17 @@ async def test_goals_calendar_excludes_completed_and_dateless_goals(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ) -> None:
     completed_goal = make_course_goal(
-        course_id=1, course_name="Completed", target_date="2026-01-15",
+        course_id=1,
+        course_name="Completed",
+        target_date="2026-01-15",
         completed_at="2026-01-14T00:00:00",
     )
-    dateless_goal = make_course_goal(course_id=2, course_name="No Deadline", target_date=None)
-    open_goal = make_course_goal(course_id=3, course_name="Open Goal", target_date="2026-01-20")
+    dateless_goal = make_course_goal(
+        course_id=2, course_name="No Deadline", target_date=None
+    )
+    open_goal = make_course_goal(
+        course_id=3, course_name="Open Goal", target_date="2026-01-20"
+    )
 
     entity = _build_goals_calendar(
         hass, mock_config_entry, [completed_goal, dateless_goal, open_goal]
@@ -209,7 +243,9 @@ async def test_goals_event_due_exactly_today_is_still_current(
     """A goal whose target date is today has an exclusive end of tomorrow, so
     `event.end > today` still holds - it hasn't lapsed yet."""
     with freeze_time("2026-01-15 09:00:00"):
-        today_goal = make_course_goal(course_id=1, course_name="Due Today", target_date="2026-01-15")
+        today_goal = make_course_goal(
+            course_id=1, course_name="Due Today", target_date="2026-01-15"
+        )
         entity = _build_goals_calendar(hass, mock_config_entry, [today_goal])
 
         event = entity.event

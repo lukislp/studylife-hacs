@@ -1,4 +1,5 @@
 """Config flow for StudyLife."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -48,7 +49,9 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -57,7 +60,9 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(url)
             self._abort_if_unique_id_configured()
 
-            client = StudyLifeApiClient(url, async_get_clientsession(self.hass), api_key)
+            client = StudyLifeApiClient(
+                url, async_get_clientsession(self.hass), api_key
+            )
             try:
                 await client.async_test_connection()
             except StudyLifeApiAuthError:
@@ -76,7 +81,9 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
             description_placeholders={"example": "http://studylife.local:8080"},
         )
 
-    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
         """Triggered by ConfigEntryAuthFailed from the coordinator.
 
         The per-user key is long-lived and never rotates by itself, so landing here
@@ -86,7 +93,9 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
         """
         return await self.async_step_reauth_confirm()
 
-    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         assert entry is not None
@@ -113,7 +122,9 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Triggered by the "Reconfigure" entry in the integration tile's menu.
 
         Unlike reauth (key-only, URL assumed correct), this lets the user fix BOTH fields -
@@ -121,7 +132,9 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
         """
         return await self.async_step_reconfigure_confirm()
 
-    async def async_step_reconfigure_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_reconfigure_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         assert entry is not None
@@ -138,7 +151,9 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
             if self.unique_id != entry.unique_id:
                 self._abort_if_unique_id_configured()
 
-            client = StudyLifeApiClient(url, async_get_clientsession(self.hass), api_key)
+            client = StudyLifeApiClient(
+                url, async_get_clientsession(self.hass), api_key
+            )
             try:
                 await client.async_test_connection()
             except StudyLifeApiAuthError:
@@ -153,7 +168,11 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reconfigure_confirm",
             data_schema=self.add_suggested_values_to_schema(
-                STEP_USER_SCHEMA, {CONF_URL: entry.data[CONF_URL], CONF_API_KEY: entry.data[CONF_API_KEY]}
+                STEP_USER_SCHEMA,
+                {
+                    CONF_URL: entry.data[CONF_URL],
+                    CONF_API_KEY: entry.data[CONF_API_KEY],
+                },
             ),
             errors=errors,
             description_placeholders={"example": "http://studylife.local:8080"},
@@ -171,12 +190,20 @@ class StudyLifeOptionsFlow(OptionsFlow):
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._config_entry = config_entry
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         if user_input is not None:
             return self.async_create_entry(data=user_input)
 
-        current = self._config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        current = self._config_entry.options.get(
+            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+        )
         schema = vol.Schema(
-            {vol.Required(CONF_SCAN_INTERVAL, default=current): vol.All(int, vol.Range(min=10, max=3600))}
+            {
+                vol.Required(CONF_SCAN_INTERVAL, default=current): vol.All(
+                    int, vol.Range(min=10, max=3600)
+                )
+            }
         )
         return self.async_show_form(step_id="init", data_schema=schema)

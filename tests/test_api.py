@@ -4,6 +4,7 @@ Deliberately standalone: aiohttp + aioresponses only, no Home Assistant test
 harness (no hass fixture, no pytest_homeassistant_custom_component pieces),
 mirroring the fact that api.py itself has zero HA imports.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -77,7 +78,9 @@ async def test_get_course_goals(client: StudyLifeApiClient) -> None:
 
 async def test_get_study_programs(client: StudyLifeApiClient) -> None:
     with aioresponses() as m:
-        payload = [{"id": None, "name": "Default", "isBuiltIn": True, "isCompleted": False}]
+        payload = [
+            {"id": None, "name": "Default", "isBuiltIn": True, "isCompleted": False}
+        ]
         m.get(f"{BASE_URL}/api/studyprograms", payload=payload)
         assert await client.async_get_study_programs() == payload
 
@@ -88,7 +91,9 @@ async def test_get_timer_state(client: StudyLifeApiClient) -> None:
         assert await client.async_get_timer_state() == {"isRunning": False}
 
 
-async def test_get_metrics_summary_without_program_id(client: StudyLifeApiClient) -> None:
+async def test_get_metrics_summary_without_program_id(
+    client: StudyLifeApiClient,
+) -> None:
     with aioresponses() as m:
         m.get(f"{BASE_URL}/api/metrics/summary", payload={"streak": {"current": 1}})
         assert await client.async_get_metrics_summary() == {"streak": {"current": 1}}
@@ -96,11 +101,16 @@ async def test_get_metrics_summary_without_program_id(client: StudyLifeApiClient
 
 async def test_get_metrics_summary_with_program_id(client: StudyLifeApiClient) -> None:
     with aioresponses() as m:
-        m.get(f"{BASE_URL}/api/metrics/summary?program=5", payload={"streak": {"current": 2}})
+        m.get(
+            f"{BASE_URL}/api/metrics/summary?program=5",
+            payload={"streak": {"current": 2}},
+        )
         assert await client.async_get_metrics_summary(5) == {"streak": {"current": 2}}
 
 
-async def test_get_metrics_summary_program_zero_is_sent_explicitly(client: StudyLifeApiClient) -> None:
+async def test_get_metrics_summary_program_zero_is_sent_explicitly(
+    client: StudyLifeApiClient,
+) -> None:
     """0 (the built-in programme's resolved id) is a real, distinct query value from
     "no program given at all" - program_id=0 must NOT be treated like None."""
     with aioresponses() as m:
@@ -108,15 +118,29 @@ async def test_get_metrics_summary_program_zero_is_sent_explicitly(client: Study
         assert await client.async_get_metrics_summary(0) == {}
 
 
-async def test_get_metrics_achievements_without_program_id(client: StudyLifeApiClient) -> None:
+async def test_get_metrics_achievements_without_program_id(
+    client: StudyLifeApiClient,
+) -> None:
     with aioresponses() as m:
-        m.get(f"{BASE_URL}/api/metrics/achievements", payload={"unlocked": 1, "total": 44, "tiers": []})
-        assert await client.async_get_metrics_achievements() == {"unlocked": 1, "total": 44, "tiers": []}
+        m.get(
+            f"{BASE_URL}/api/metrics/achievements",
+            payload={"unlocked": 1, "total": 44, "tiers": []},
+        )
+        assert await client.async_get_metrics_achievements() == {
+            "unlocked": 1,
+            "total": 44,
+            "tiers": [],
+        }
 
 
-async def test_get_metrics_achievements_with_program_id(client: StudyLifeApiClient) -> None:
+async def test_get_metrics_achievements_with_program_id(
+    client: StudyLifeApiClient,
+) -> None:
     with aioresponses() as m:
-        m.get(f"{BASE_URL}/api/metrics/achievements?program=5", payload={"unlocked": 0, "total": 44, "tiers": []})
+        m.get(
+            f"{BASE_URL}/api/metrics/achievements?program=5",
+            payload={"unlocked": 0, "total": 44, "tiers": []},
+        )
         result = await client.async_get_metrics_achievements(5)
         assert result == {"unlocked": 0, "total": 44, "tiers": []}
 
@@ -133,17 +157,23 @@ async def test_metrics_summary_404_raises_endpoint_missing_error_not_generic(
         with pytest.raises(StudyLifeApiEndpointMissingError) as excinfo:
             await client.async_get_metrics_summary()
     assert "404" in str(excinfo.value)
-    assert isinstance(excinfo.value, StudyLifeApiError)  # still catchable as the parent type
+    assert isinstance(
+        excinfo.value, StudyLifeApiError
+    )  # still catchable as the parent type
 
 
-async def test_metrics_achievements_404_raises_endpoint_missing_error(client: StudyLifeApiClient) -> None:
+async def test_metrics_achievements_404_raises_endpoint_missing_error(
+    client: StudyLifeApiClient,
+) -> None:
     with aioresponses() as m:
         m.get(f"{BASE_URL}/api/metrics/achievements", status=404)
         with pytest.raises(StudyLifeApiEndpointMissingError):
             await client.async_get_metrics_achievements()
 
 
-async def test_unrelated_endpoint_404_stays_generic_api_error(client: StudyLifeApiClient) -> None:
+async def test_unrelated_endpoint_404_stays_generic_api_error(
+    client: StudyLifeApiClient,
+) -> None:
     """The 404-means-old-server special case only applies to endpoints that opted in via
     `missing_endpoint_hint` - every other endpoint's 404 (e.g. a genuinely deleted
     resource) must keep raising the plain StudyLifeApiError a normal raise_for_status()
@@ -162,13 +192,18 @@ async def test_unrelated_endpoint_404_stays_generic_api_error(client: StudyLifeA
 
 async def test_get_session_history_default_params(client: StudyLifeApiClient) -> None:
     with aioresponses() as m:
-        m.get(f"{BASE_URL}/api/sessions/history?days=400&onlyCompleted=false", payload=[])
+        m.get(
+            f"{BASE_URL}/api/sessions/history?days=400&onlyCompleted=false", payload=[]
+        )
         assert await client.async_get_session_history() == []
 
 
 async def test_get_session_history_custom_params(client: StudyLifeApiClient) -> None:
     with aioresponses() as m:
-        m.get(f"{BASE_URL}/api/sessions/history?days=30&onlyCompleted=true", payload=[{"id": 1}])
+        m.get(
+            f"{BASE_URL}/api/sessions/history?days=30&onlyCompleted=true",
+            payload=[{"id": 1}],
+        )
         result = await client.async_get_session_history(days=30, only_completed=True)
         assert result == [{"id": 1}]
 
@@ -191,7 +226,9 @@ async def test_get_courses_with_program_id(client: StudyLifeApiClient) -> None:
 # --------------------------------------------------------------------------
 
 
-async def test_create_session_posts_body_and_returns_json(client: StudyLifeApiClient) -> None:
+async def test_create_session_posts_body_and_returns_json(
+    client: StudyLifeApiClient,
+) -> None:
     body = {"courseId": 100, "startTime": "2026-01-06T10:00:00"}
     with aioresponses() as m:
         m.post(f"{BASE_URL}/api/sessions", payload={"id": 1, **body})
@@ -201,7 +238,9 @@ async def test_create_session_posts_body_and_returns_json(client: StudyLifeApiCl
         assert calls[0].kwargs["json"] == body
 
 
-async def test_update_session_puts_body_and_returns_json(client: StudyLifeApiClient) -> None:
+async def test_update_session_puts_body_and_returns_json(
+    client: StudyLifeApiClient,
+) -> None:
     body = {"courseId": 100, "topic": "Graphs"}
     with aioresponses() as m:
         m.put(f"{BASE_URL}/api/sessions/42", payload={"id": 42, **body})
@@ -211,7 +250,9 @@ async def test_update_session_puts_body_and_returns_json(client: StudyLifeApiCli
         assert calls[0].kwargs["json"] == body
 
 
-async def test_delete_session_sends_delete_and_returns_none(client: StudyLifeApiClient) -> None:
+async def test_delete_session_sends_delete_and_returns_none(
+    client: StudyLifeApiClient,
+) -> None:
     with aioresponses() as m:
         m.delete(f"{BASE_URL}/api/sessions/42", status=204)
         result = await client.async_delete_session(42)
@@ -220,7 +261,9 @@ async def test_delete_session_sends_delete_and_returns_none(client: StudyLifeApi
         assert len(calls) == 1
 
 
-async def test_set_course_goal_puts_body_and_returns_json(client: StudyLifeApiClient) -> None:
+async def test_set_course_goal_puts_body_and_returns_json(
+    client: StudyLifeApiClient,
+) -> None:
     goal = {"grade": 1.3, "targetDate": "2026-06-01"}
     with aioresponses() as m:
         m.put(f"{BASE_URL}/api/coursegoals/100", payload={"courseId": 100, **goal})
@@ -230,7 +273,9 @@ async def test_set_course_goal_puts_body_and_returns_json(client: StudyLifeApiCl
         assert calls[0].kwargs["json"] == goal
 
 
-async def test_update_settings_puts_body_and_returns_json(client: StudyLifeApiClient) -> None:
+async def test_update_settings_puts_body_and_returns_json(
+    client: StudyLifeApiClient,
+) -> None:
     settings = {"activeStudyProgramId": 2}
     with aioresponses() as m:
         m.put(f"{BASE_URL}/api/settings", payload=settings)
@@ -240,7 +285,9 @@ async def test_update_settings_puts_body_and_returns_json(client: StudyLifeApiCl
         assert calls[0].kwargs["json"] == settings
 
 
-async def test_generate_exam_plan_posts_body_and_returns_json(client: StudyLifeApiClient) -> None:
+async def test_generate_exam_plan_posts_body_and_returns_json(
+    client: StudyLifeApiClient,
+) -> None:
     request = {"courseId": 100, "examDate": "2026-06-01"}
     with aioresponses() as m:
         m.post(f"{BASE_URL}/api/planner/exam-plan", payload=[{"id": 1}])
@@ -261,7 +308,9 @@ async def test_test_connection_succeeds_silently(client: StudyLifeApiClient) -> 
         assert await client.async_test_connection() is None
 
 
-async def test_test_connection_propagates_auth_error(client: StudyLifeApiClient) -> None:
+async def test_test_connection_propagates_auth_error(
+    client: StudyLifeApiClient,
+) -> None:
     with aioresponses() as m:
         m.get(f"{BASE_URL}/api/settings", status=401)
         with pytest.raises(StudyLifeApiAuthError):
@@ -288,7 +337,9 @@ async def test_api_key_header_sent_when_present(client: StudyLifeApiClient) -> N
         assert calls[0].kwargs["headers"]["X-Api-Key"] == API_KEY
 
 
-async def test_api_key_header_absent_when_no_key(client_no_key: StudyLifeApiClient) -> None:
+async def test_api_key_header_absent_when_no_key(
+    client_no_key: StudyLifeApiClient,
+) -> None:
     with aioresponses() as m:
         m.get(f"{BASE_URL}/api/settings", payload={})
         await client_no_key.async_get_settings()
@@ -308,7 +359,9 @@ async def test_401_raises_auth_error(client: StudyLifeApiClient) -> None:
             await client.async_get_settings()
 
 
-async def test_500_raises_api_error_but_not_auth_error(client: StudyLifeApiClient) -> None:
+async def test_500_raises_api_error_but_not_auth_error(
+    client: StudyLifeApiClient,
+) -> None:
     with aioresponses() as m:
         m.get(f"{BASE_URL}/api/settings", status=500)
         with pytest.raises(StudyLifeApiError) as excinfo:
@@ -318,7 +371,9 @@ async def test_500_raises_api_error_but_not_auth_error(client: StudyLifeApiClien
 
 async def test_connection_error_raises_api_error(client: StudyLifeApiClient) -> None:
     with aioresponses() as m:
-        m.get(f"{BASE_URL}/api/settings", exception=aiohttp.ClientConnectionError("boom"))
+        m.get(
+            f"{BASE_URL}/api/settings", exception=aiohttp.ClientConnectionError("boom")
+        )
         with pytest.raises(StudyLifeApiError):
             await client.async_get_settings()
 
@@ -336,7 +391,9 @@ async def test_timeout_raises_api_error(client: StudyLifeApiClient) -> None:
 # --------------------------------------------------------------------------
 
 
-async def test_create_session_400_raises_course_rejected_error(client: StudyLifeApiClient) -> None:
+async def test_create_session_400_raises_course_rejected_error(
+    client: StudyLifeApiClient,
+) -> None:
     """The server validates CourseId on every write - a 400 here means the local
     course catalog (checked by services.py before this call) is stale, not a
     generic failure. Must raise the distinct, actionable subclass with the
@@ -348,10 +405,14 @@ async def test_create_session_400_raises_course_rejected_error(client: StudyLife
             await client.async_create_session(body)
     assert excinfo.value.course_id == 999
     assert "999" in str(excinfo.value)
-    assert isinstance(excinfo.value, StudyLifeApiError)  # still catchable as the parent type
+    assert isinstance(
+        excinfo.value, StudyLifeApiError
+    )  # still catchable as the parent type
 
 
-async def test_update_session_400_raises_course_rejected_error(client: StudyLifeApiClient) -> None:
+async def test_update_session_400_raises_course_rejected_error(
+    client: StudyLifeApiClient,
+) -> None:
     body = {"courseId": 999, "topic": "Graphs"}
     with aioresponses() as m:
         m.put(f"{BASE_URL}/api/sessions/42", status=400)
@@ -360,7 +421,9 @@ async def test_update_session_400_raises_course_rejected_error(client: StudyLife
     assert excinfo.value.course_id == 999
 
 
-async def test_set_course_goal_400_raises_course_rejected_error(client: StudyLifeApiClient) -> None:
+async def test_set_course_goal_400_raises_course_rejected_error(
+    client: StudyLifeApiClient,
+) -> None:
     goal = {"courseId": 999, "grade": 1.3}
     with aioresponses() as m:
         m.put(f"{BASE_URL}/api/coursegoals/999", status=400)
@@ -369,7 +432,9 @@ async def test_set_course_goal_400_raises_course_rejected_error(client: StudyLif
     assert excinfo.value.course_id == 999
 
 
-async def test_generate_exam_plan_400_raises_course_rejected_error(client: StudyLifeApiClient) -> None:
+async def test_generate_exam_plan_400_raises_course_rejected_error(
+    client: StudyLifeApiClient,
+) -> None:
     request = {"courseId": 999, "examDate": "2026-06-01"}
     with aioresponses() as m:
         m.post(f"{BASE_URL}/api/planner/exam-plan", status=400)
@@ -413,9 +478,16 @@ async def test_delete_returns_none_on_204(client: StudyLifeApiClient) -> None:
         assert await client.async_delete_session(42) is None
 
 
-async def test_get_returns_none_when_content_length_zero(client: StudyLifeApiClient) -> None:
+async def test_get_returns_none_when_content_length_zero(
+    client: StudyLifeApiClient,
+) -> None:
     with aioresponses() as m:
-        m.get(f"{BASE_URL}/api/settings", status=200, body="", headers={"Content-Length": "0"})
+        m.get(
+            f"{BASE_URL}/api/settings",
+            status=200,
+            body="",
+            headers={"Content-Length": "0"},
+        )
         assert await client.async_get_settings() is None
 
 
@@ -461,7 +533,11 @@ async def test_etag_cache_is_keyed_per_path(client: StudyLifeApiClient) -> None:
     """/api/courses and /api/courses?program=5 must not share a cache entry."""
     with aioresponses() as m:
         m.get(f"{BASE_URL}/api/courses", payload=[{"id": 1}], headers={"ETag": '"a"'})
-        m.get(f"{BASE_URL}/api/courses?program=5", payload=[{"id": 2}], headers={"ETag": '"b"'})
+        m.get(
+            f"{BASE_URL}/api/courses?program=5",
+            payload=[{"id": 2}],
+            headers={"ETag": '"b"'},
+        )
         m.get(f"{BASE_URL}/api/courses", status=304)
         m.get(f"{BASE_URL}/api/courses?program=5", status=304)
 

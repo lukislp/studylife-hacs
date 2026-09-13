@@ -1,4 +1,5 @@
 """Calendar entities exposing StudyLife sessions and course-goal deadlines."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -75,7 +76,8 @@ class StudyLifeCalendar(StudyLifeEntity, CalendarEntity):
         return [
             _to_event(session)
             for session in sorted(self.data.sessions, key=lambda s: s.start)
-            if dt_util.as_local(session.end) >= start_date and dt_util.as_local(session.start) <= end_date
+            if dt_util.as_local(session.end) >= start_date
+            and dt_util.as_local(session.start) <= end_date
         ]
 
 

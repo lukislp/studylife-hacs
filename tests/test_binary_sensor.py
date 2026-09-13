@@ -8,6 +8,7 @@ lower-level "program deleted" defensiveness of StudyLifeProgramBinarySensor is
 covered separately, without a full hass setup, since it doesn't depend on any
 of that wiring.
 """
+
 from __future__ import annotations
 
 from unittest.mock import Mock
@@ -32,7 +33,11 @@ from .conftest import (
 
 
 def _binary_sensor_id(
-    hass: HomeAssistant, entry: MockConfigEntry, key: str, *, program_id: str | None = None
+    hass: HomeAssistant,
+    entry: MockConfigEntry,
+    key: str,
+    *,
+    program_id: str | None = None,
 ) -> str | None:
     return get_entity_id(
         hass, entry.entry_id, key, program_id=program_id, platform="binary_sensor"
@@ -53,7 +58,9 @@ async def test_week_quota_warning_on_when_under_weekly_target(
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 
     assert coordinator.data.week_quota.warning is True
-    state = hass.states.get(_binary_sensor_id(hass, mock_config_entry, "week_quota_warning"))
+    state = hass.states.get(
+        _binary_sensor_id(hass, mock_config_entry, "week_quota_warning")
+    )
     assert state is not None
     assert state.state == STATE_ON
 
@@ -71,7 +78,9 @@ async def test_week_quota_warning_off_when_weekly_target_met(
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 
     assert coordinator.data.week_quota.warning is False
-    state = hass.states.get(_binary_sensor_id(hass, mock_config_entry, "week_quota_warning"))
+    state = hass.states.get(
+        _binary_sensor_id(hass, mock_config_entry, "week_quota_warning")
+    )
     assert state is not None
     assert state.state == STATE_OFF
 
@@ -82,7 +91,9 @@ async def test_month_quota_warning_on_when_under_monthly_target(
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 
     assert coordinator.data.month_quota.warning is True
-    state = hass.states.get(_binary_sensor_id(hass, mock_config_entry, "month_quota_warning"))
+    state = hass.states.get(
+        _binary_sensor_id(hass, mock_config_entry, "month_quota_warning")
+    )
     assert state is not None
     assert state.state == STATE_ON
 
@@ -98,7 +109,9 @@ async def test_month_quota_warning_off_when_monthly_target_met(
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 
     assert coordinator.data.month_quota.warning is False
-    state = hass.states.get(_binary_sensor_id(hass, mock_config_entry, "month_quota_warning"))
+    state = hass.states.get(
+        _binary_sensor_id(hass, mock_config_entry, "month_quota_warning")
+    )
     assert state is not None
     assert state.state == STATE_OFF
 
@@ -116,14 +129,20 @@ async def test_per_programme_binary_sensors_created_for_every_programme(
     reads its OWN programme's data rather than sharing state."""
     mock_api_client.async_get_settings.return_value = {"activeStudyProgramId": 7}
     mock_api_client.async_get_study_programs.return_value = [
-        make_raw_study_program(id=None, name="Bachelor", is_built_in=True, is_completed=False),
-        make_raw_study_program(id=7, name="Master", is_built_in=False, is_completed=True),
+        make_raw_study_program(
+            id=None, name="Bachelor", is_built_in=True, is_completed=False
+        ),
+        make_raw_study_program(
+            id=7, name="Master", is_built_in=False, is_completed=True
+        ),
     ]
     courses_by_pid = {
         0: [make_course(id=100, name="Algorithms")],
         7: [make_course(id=200, name="Databases")],
     }
-    mock_api_client.async_get_courses.side_effect = lambda pid: courses_by_pid.get(pid, [])
+    mock_api_client.async_get_courses.side_effect = lambda pid: courses_by_pid.get(
+        pid, []
+    )
 
     await setup_integration(hass, mock_config_entry, mock_api_client)
 
@@ -139,7 +158,12 @@ async def test_per_programme_binary_sensors_created_for_every_programme(
     master_active_id = _binary_sensor_id(
         hass, mock_config_entry, "program_active", program_id="7"
     )
-    for entity_id in (builtin_completed_id, master_completed_id, builtin_active_id, master_active_id):
+    for entity_id in (
+        builtin_completed_id,
+        master_completed_id,
+        builtin_active_id,
+        master_active_id,
+    ):
         assert entity_id is not None
 
     assert hass.states.get(builtin_completed_id).state == STATE_OFF
@@ -165,20 +189,29 @@ async def test_programme_added_later_gets_binary_sensors_via_coordinator_listene
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 
     assert (
-        _binary_sensor_id(hass, mock_config_entry, "program_active", program_id="builtin")
+        _binary_sensor_id(
+            hass, mock_config_entry, "program_active", program_id="builtin"
+        )
         is not None
     )
-    assert _binary_sensor_id(hass, mock_config_entry, "program_active", program_id="9") is None
+    assert (
+        _binary_sensor_id(hass, mock_config_entry, "program_active", program_id="9")
+        is None
+    )
 
     mock_api_client.async_get_study_programs.return_value = [
         make_raw_study_program(id=None, name="Bachelor", is_built_in=True),
-        make_raw_study_program(id=9, name="New Programme", is_built_in=False, is_completed=True),
+        make_raw_study_program(
+            id=9, name="New Programme", is_built_in=False, is_completed=True
+        ),
     ]
 
     await coordinator.async_refresh()
     await hass.async_block_till_done()
 
-    new_entity_id = _binary_sensor_id(hass, mock_config_entry, "program_completed", program_id="9")
+    new_entity_id = _binary_sensor_id(
+        hass, mock_config_entry, "program_completed", program_id="9"
+    )
     assert new_entity_id is not None
     state = hass.states.get(new_entity_id)
     assert state is not None
@@ -195,13 +228,17 @@ async def test_deleted_programme_binary_sensor_becomes_unavailable(
 ) -> None:
     mock_api_client.async_get_study_programs.return_value = [
         make_raw_study_program(id=None, name="Bachelor", is_built_in=True),
-        make_raw_study_program(id=7, name="Master", is_built_in=False, is_completed=True),
+        make_raw_study_program(
+            id=7, name="Master", is_built_in=False, is_completed=True
+        ),
     ]
     mock_api_client.async_get_courses.return_value = []
 
     coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
 
-    master_id = _binary_sensor_id(hass, mock_config_entry, "program_completed", program_id="7")
+    master_id = _binary_sensor_id(
+        hass, mock_config_entry, "program_completed", program_id="7"
+    )
     assert master_id is not None
     assert hass.states.get(master_id).state == STATE_ON
 
@@ -231,7 +268,9 @@ async def test_deleted_programme_binary_sensor_becomes_unavailable(
 # ---------------------------------------------------------------------------
 
 
-def test_program_binary_sensor_returns_none_and_empty_attrs_when_program_data_missing() -> None:
+def test_program_binary_sensor_returns_none_and_empty_attrs_when_program_data_missing() -> (
+    None
+):
     coordinator = Mock()
     coordinator.data.programs = {}  # the programme isn't (or no longer is) known
     entry = Mock()
@@ -239,6 +278,8 @@ def test_program_binary_sensor_returns_none_and_empty_attrs_when_program_data_mi
     entry.data = {}
 
     for description in PROGRAM_BINARY_SENSOR_DESCRIPTIONS:
-        entity = StudyLifeProgramBinarySensor(coordinator, entry, description, "builtin", "Bachelor")
+        entity = StudyLifeProgramBinarySensor(
+            coordinator, entry, description, "builtin", "Bachelor"
+        )
         assert entity.is_on is None, description.key
         assert entity.extra_state_attributes == {}, description.key

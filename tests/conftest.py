@@ -1,4 +1,5 @@
 """Shared fixtures for the StudyLife integration test suite."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -130,7 +131,9 @@ def make_raw_metrics_summary(
     _program_data_from_summary (and the top-level active-programme mapping in
     _async_update_data) expects to consume it - matches the shared metrics
     contract's wire format exactly (see docs/api's metrics contract)."""
-    resolved_current_month_hours = current_month_hours if current_month_hours is not None else month_hours
+    resolved_current_month_hours = (
+        current_month_hours if current_month_hours is not None else month_hours
+    )
     resolved_delta_vs_previous_month = (
         delta_vs_previous_month
         if delta_vs_previous_month is not None
@@ -138,7 +141,11 @@ def make_raw_metrics_summary(
     )
     return {
         "asOf": "2026-01-06T10:00:00",
-        "program": {"id": program_id, "name": program_name, "isBuiltIn": program_is_built_in},
+        "program": {
+            "id": program_id,
+            "name": program_name,
+            "isBuiltIn": program_is_built_in,
+        },
         "streak": {"current": streak_current, "longest": streak_longest},
         "hours": {
             "week": week_hours,
@@ -146,8 +153,12 @@ def make_raw_metrics_summary(
             "total": total_hours,
             "totalSessions": total_sessions,
         },
-        "weekQuota": week_quota if week_quota is not None else make_raw_quota(hours=week_hours),
-        "monthQuota": month_quota if month_quota is not None else make_raw_quota(
+        "weekQuota": week_quota
+        if week_quota is not None
+        else make_raw_quota(hours=week_hours),
+        "monthQuota": month_quota
+        if month_quota is not None
+        else make_raw_quota(
             hours=month_hours, target_min=100.0, target_max=130.0, missing_hours=100.0
         ),
         "ects": {"earned": ects_earned, "total": ects_total},
@@ -167,7 +178,9 @@ def make_raw_metrics_summary(
             "deltaVsLastYear": delta_vs_last_year,
         },
         "neglectedCourse": neglected_course,
-        "weeklyReport": weekly_report if weekly_report is not None else {
+        "weeklyReport": weekly_report
+        if weekly_report is not None
+        else {
             "weekId": "2026-W01",
             "hours": 0.0,
             "deltaVsPreviousWeek": 0.0,
@@ -176,14 +189,25 @@ def make_raw_metrics_summary(
         },
         "courseHours": course_hours if course_hours is not None else [],
         "topics": {"completed": topics_completed, "total": topics_total},
-        "upcomingCourseGoals": upcoming_course_goals if upcoming_course_goals is not None else [],
+        "upcomingCourseGoals": upcoming_course_goals
+        if upcoming_course_goals is not None
+        else [],
     }
 
 
 def make_raw_achievement_tier(
-    *, category: str = "hours", threshold: float = 25, unlocked: bool = False, current: float = 0.0
+    *,
+    category: str = "hours",
+    threshold: float = 25,
+    unlocked: bool = False,
+    current: float = 0.0,
 ) -> dict[str, Any]:
-    return {"category": category, "threshold": threshold, "unlocked": unlocked, "current": current}
+    return {
+        "category": category,
+        "threshold": threshold,
+        "unlocked": unlocked,
+        "current": current,
+    }
 
 
 def make_raw_metrics_achievements(
@@ -191,7 +215,11 @@ def make_raw_metrics_achievements(
 ) -> dict[str, Any]:
     """Build a raw GET /api/metrics/achievements response, as coordinator.py's
     _parse_achievements expects to consume it."""
-    return {"unlocked": unlocked, "total": total, "tiers": tiers if tiers is not None else []}
+    return {
+        "unlocked": unlocked,
+        "total": total,
+        "tiers": tiers if tiers is not None else [],
+    }
 
 
 def make_raw_session(
@@ -278,7 +306,12 @@ def make_raw_study_program(
     """Build a raw (server-shaped) study-programme dict, as api.py's
     _to_study_program expects to consume it. id=None mirrors the server's
     built-in-programme convention."""
-    return {"id": id, "name": name, "isBuiltIn": is_built_in, "isCompleted": is_completed}
+    return {
+        "id": id,
+        "name": name,
+        "isBuiltIn": is_built_in,
+        "isCompleted": is_completed,
+    }
 
 
 async def setup_integration(
@@ -312,7 +345,9 @@ def get_entity_id(
     (see StudyLifeEntity.__init__) - avoids guessing at slugified names, which
     depend on translation loading and device-name collisions."""
     unique_id = (
-        f"{entry_id}_{key}" if program_id is None else f"{entry_id}_program_{program_id}_{key}"
+        f"{entry_id}_{key}"
+        if program_id is None
+        else f"{entry_id}_program_{program_id}_{key}"
     )
     return er.async_get(hass).async_get_entity_id(platform, DOMAIN, unique_id)
 
