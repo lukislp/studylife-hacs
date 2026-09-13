@@ -1,3 +1,6 @@
+# The whole pipeline lives in lukislp/ci-workflows (hacs-ci.yml): HACS + hassfest validation,
+# ruff, pytest with the coverage badge, an Atheris fuzz pass, then get-version and
+# semantic-release on main. Check names in the branch ruleset are "ci / <job>".
 name: CI/CD
 
 on:
@@ -6,6 +9,7 @@ on:
   pull_request:
     branches: [main]
 
+# One run per PR / per branch tip: a newer push cancels the PR run it supersedes.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -14,204 +18,16 @@ permissions:
   contents: read
 
 jobs:
-  # ---------------------------------------------------------------------
-  # Test stage — runs on every push to main AND every pull request
-  # ---------------------------------------------------------------------
-  test-hacs-validation:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Official HACS structural validation (hacs.json, manifest fields, etc.) - always
-      # referenced by branch per HACS's own docs, since it validates against whatever
-      # the current HACS requirements are, not a fixed historical ruleset. The brands
-      # check now passes on its own: custom_components/studylife/brand/icon.png is
-      # picked up directly (HA 2026.3+ brand proxy API), no home-assistant/brands PR needed.
-      - uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main
-        with:
-          category: integration
-
-  test-hassfest:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Home Assistant Core's own manifest/config-flow/translation validator - always
-      # referenced by branch, same rationale as hacs/action above: validates against
-      # whatever hassfest's current ruleset is, not a fixed historical pin.
-      - uses: home-assistant/actions/hassfest@58bff37c8947f690ace498be413a9b78d6f30f93 # master
-
-  test-lint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.14"
-      - run: pip install --require-hashes -r requirements_lint.txt
-      - run: ruff check .
-
-  test-unit:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.14"
-          cache: pip
-          cache-dependency-path: requirements_test.txt
-      - run: pip install --require-hashes -r requirements_test.txt
-      # tests/test_openapi_contract.py (audit finding D2/D3) and tests/test_metrics_golden_
-      # fixtures.py (audit finding D4) are a normal part of this `pytest tests/` run - they're
-      # just two more modules under tests/. Called out here because they behave differently in
-      # CI than the rest of the suite: each fetches a committed file from the studylife repo's
-      # main branch (docs/api/openapi.json / docs/api/metrics-fixtures.json, via their own
-      # default STUDYLIFE_OPENAPI_SPEC / STUDYLIFE_METRICS_FIXTURES URLs) and FAILS this job
-      # (not skips) if that file is unreachable, or if this integration's api.py/coordinator.py
-      # have drifted from it - see those modules' own docstrings for the full reachability
-      # policy (CI vs. local/offline dev) and tests/_network_fetch.py for why they each need one
-      # real outbound HTTPS request despite pytest-homeassistant-custom-component blocking
-      # sockets by default for every other test in this suite.
-      - run: pytest tests/ -v --cov=custom_components/studylife --cov-report=json:coverage.json
-      # Self-hosted coverage badge (no external service), downloaded and committed by the
-      # semantic-release job below - same pattern as the manifest-version sync.
-      - run: python3 scripts/generate_coverage_badge.py coverage.json coverage-badge.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: coverage-badge
-          path: coverage-badge.json
-          retention-days: 7
-
-  # ---------------------------------------------------------------------
-  # Version / release — push to main only
-  # ---------------------------------------------------------------------
-  # Coverage-guided fuzzing of the coordinator's API-payload parsers (fuzz/): a short fixed
-  # budget per run, enough to catch a crash on the next code change.
-  fuzz:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.14"
-          cache: pip
-          cache-dependency-path: requirements_test.txt
-      - run: pip install --require-hashes -r requirements_test.txt -r requirements_fuzz.txt
-      - run: python fuzz/fuzz_coordinator.py -max_total_time=30 -rss_limit_mb=1024
-        env:
-          PYTHONPATH: .
-
-  get-version:
-    needs: [test-hacs-validation, test-hassfest, test-lint, test-unit]
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    concurrency:
-      group: studylife-hacs-release-chain
-      cancel-in-progress: false
-    # @semantic-release/github's verifyConditions step checks the token has repo push access
-    # (contents: write) even during a dry run - a read-only token fails that check outright.
-    # issues:write/pull-requests:write are NOT needed here: those only get exercised by the
-    # publish/success/fail lifecycle steps, which dry_run: true skips entirely - confirmed
-    # live (2026-08-12, see studylife-ai's docs/decisions.md).
-    permissions:
-      contents: write
-    outputs:
-      published: ${{ steps.semrel.outputs.new_release_published }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # ref: main (branch tip), NOT the push-event SHA: "[skip ci]" commits can land on
-          # main between the triggering push and this job actually running. semantic-release's
-          # "local branch is behind the remote" guard then analyzes a stale SHA and releases
-          # nothing - the entire release chain skips even though a releasable fix was just
-          # merged. Analyzing the branch tip makes the verdict immune to that race.
-          ref: main
-          fetch-depth: 0
-      # Ruleset bypass for the release commit (2026-09-11 main-protection rollout): main is
-      # protected by a ruleset (pull request + green test stage) that the GitHub Actions app
-      # cannot be a bypass actor for on a personal repository, so semantic-release pushes over
-      # SSH as a write-enabled DEPLOY KEY instead, which can. No-op while the secret is unset -
-      # the push then goes through the GITHUB_TOKEN https remote exactly as before. Needed in
-      # get-version too: @semantic-release/git's verifyConditions runs `git push --dry-run`
-      # even in dry-run mode. Same mechanism as lukislp/studylife's ci-cd.yml.
-      - name: Push as the semantic-release deploy key (if configured)
-        uses: lukislp/ci-workflows/.github/actions/deploy-key-push@f3d5b5b26069f5678e813b2bc7440cb441aa28d0 # v1.1.0
-        with:
-          deploy-key: ${{ secrets.SEMANTIC_RELEASE_DEPLOY_KEY }}
-      - id: semrel
-        uses: lukislp/ci-workflows/.github/actions/semantic-release@c1dd49d3d005e8912ab3420d5fdd7f3d9ee16adf # v1.2.2
-        with:
-          dry-run: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: No release needed for this push
-        if: steps.semrel.outputs.new_release_published != 'true'
-        run: |
-          echo "No releasable commits since the last tag (e.g. docs/ci/chore-only) - this is the expected, common case with Conventional Commits, not a failure. Downstream jobs below skip themselves via needs.get-version.outputs.published." | tee -a "$GITHUB_STEP_SUMMARY"
-
-  semantic-release:
-    needs: [get-version]
-    if: github.event_name == 'push' && needs.get-version.outputs.published == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    concurrency:
-      group: studylife-hacs-release-chain
-      cancel-in-progress: false
+  ci:
+    uses: lukislp/ci-workflows/.github/workflows/hacs-ci.yml@8ae361941d22f009a3d630ce4862364d9a7ca29d # v1.3.0
+    # The called workflow narrows these per job (the test jobs run with contents: read).
     permissions:
       contents: write
       issues: write
       pull-requests: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # ref: main for the same reason as get-version's checkout: the real release must be
-          # cut from the branch tip get-version analyzed, or the "behind the remote" guard trips
-          # whenever a [skip ci] commit raced in.
-          ref: main
-          fetch-depth: 0
-      # Ruleset bypass for the release commit (2026-09-11 main-protection rollout): main is
-      # protected by a ruleset (pull request + green test stage) that the GitHub Actions app
-      # cannot be a bypass actor for on a personal repository, so semantic-release pushes over
-      # SSH as a write-enabled DEPLOY KEY instead, which can. No-op while the secret is unset -
-      # the push then goes through the GITHUB_TOKEN https remote exactly as before. Needed in
-      # get-version too: @semantic-release/git's verifyConditions runs `git push --dry-run`
-      # even in dry-run mode. Same mechanism as lukislp/studylife's ci-cd.yml.
-      - name: Push as the semantic-release deploy key (if configured)
-        uses: lukislp/ci-workflows/.github/actions/deploy-key-push@f3d5b5b26069f5678e813b2bc7440cb441aa28d0 # v1.1.0
-        with:
-          deploy-key: ${{ secrets.SEMANTIC_RELEASE_DEPLOY_KEY }}
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.14"
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: coverage-badge
-          path: coverage-artifact
-      - run: mkdir -p .github/badges && mv coverage-artifact/coverage-badge.json .github/badges/coverage.json
-      - id: semrel
-        uses: lukislp/ci-workflows/.github/actions/semantic-release@c1dd49d3d005e8912ab3420d5fdd7f3d9ee16adf # v1.2.2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-      # Retry once for the narrow window where an out-of-band push to main landed between
-      # this job's checkout and its own push (the concurrency group above already serializes
-      # overlapping runs of this workflow, so this only guards against a genuinely external push).
-      - if: steps.semrel.outcome == 'failure'
-        name: "Diagnose before retrying (expected: an out-of-band push landed since checkout)"
-        run: |
-          git fetch origin main
-          BEFORE_SHA="$(git rev-parse HEAD)"
-          AFTER_SHA="$(git rev-parse origin/main)"
-          if [ "$BEFORE_SHA" != "$AFTER_SHA" ]; then
-            echo "origin/main moved since checkout ($BEFORE_SHA -> $AFTER_SHA) - this matches the out-of-band-push race this retry is designed for."
-          else
-            echo "::warning::origin/main did NOT move since checkout - this failure is likely NOT the expected out-of-band-push race. Retrying anyway, but check the semantic-release log above for the real cause before assuming this is just a race."
-          fi
-          git checkout -B main origin/main
-      - if: steps.semrel.outcome == 'failure'
-        uses: lukislp/ci-workflows/.github/actions/semantic-release@c1dd49d3d005e8912ab3420d5fdd7f3d9ee16adf # v1.2.2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+    with:
+      component: studylife
+      fuzz-script: fuzz/fuzz_coordinator.py
+      release-group: studylife-hacs-release-chain
+    secrets:
+      SEMANTIC_RELEASE_DEPLOY_KEY: ${{ secrets.SEMANTIC_RELEASE_DEPLOY_KEY }}
