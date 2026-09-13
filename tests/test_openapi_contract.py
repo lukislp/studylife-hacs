@@ -16,6 +16,7 @@ env var set, AND the default URL happens to be unreachable - e.g. no internet) i
 STUDYLIFE_OPENAPI_SPEC that turns out to be unreachable is still a real error and fails,
 since the developer pointed at it on purpose.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,7 +31,9 @@ import pytest
 
 from ._network_fetch import allow_network_for
 
-DEFAULT_SPEC_URL = "https://raw.githubusercontent.com/lukislp/studylife/main/docs/api/openapi.json"
+DEFAULT_SPEC_URL = (
+    "https://raw.githubusercontent.com/lukislp/studylife/main/docs/api/openapi.json"
+)
 SPEC_HOST = "raw.githubusercontent.com"
 
 # Every StudyLife endpoint custom_components/studylife/api.py calls, read exhaustively from
@@ -119,7 +122,9 @@ def _path_regex(template: str) -> re.Pattern[str]:
     return re.compile(f"^{pattern}$")
 
 
-def _find_matching_path_template(spec_paths: dict[str, Any], concrete_path: str) -> str | None:
+def _find_matching_path_template(
+    spec_paths: dict[str, Any], concrete_path: str
+) -> str | None:
     """An exact literal match always wins over a templated one (same static-beats-
     parameterized precedence ASP.NET Core's own router uses) - only falls back to templated
     matching once no literal path is present at all. api.py's own path strings are already
@@ -137,7 +142,9 @@ def _find_matching_path_template(spec_paths: dict[str, Any], concrete_path: str)
     CALLED_ENDPOINTS,
     ids=[f"{method}_{path}" for method, path in CALLED_ENDPOINTS],
 )
-def test_called_endpoint_exists_in_spec(spec: dict[str, Any], method: str, path: str) -> None:
+def test_called_endpoint_exists_in_spec(
+    spec: dict[str, Any], method: str, path: str
+) -> None:
     spec_paths = spec.get("paths", {})
     template = _find_matching_path_template(spec_paths, path)
     assert template is not None, (

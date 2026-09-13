@@ -36,6 +36,7 @@ because the buggy code they exercised (`_calc_week_quota`'s session filter,
 KNOWN_DRIFT_XFAIL list left to maintain; both scenarios just run through the same assertion
 as every other one.
 """
+
 from __future__ import annotations
 
 import functools
@@ -182,8 +183,11 @@ def _raw_summary_from_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
         },
         "neglectedCourse": None,
         "weeklyReport": {
-            "weekId": "2026-W01", "hours": 0.0, "deltaVsPreviousWeek": 0.0,
-            "topCourseName": None, "sessionCount": 0,
+            "weekId": "2026-W01",
+            "hours": 0.0,
+            "deltaVsPreviousWeek": 0.0,
+            "topCourseName": None,
+            "sessionCount": 0,
         },
         "courseHours": [],
         "topics": {"completed": 0, "total": 0},
@@ -191,7 +195,9 @@ def _raw_summary_from_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-_ACTIVE_PROGRAM = StudyProgram(id=None, name="StudyLife", is_built_in=True, is_completed=False)
+_ACTIVE_PROGRAM = StudyProgram(
+    id=None, name="StudyLife", is_built_in=True, is_completed=False
+)
 
 
 def _run_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
@@ -256,7 +262,9 @@ def _assert_matches(actual: dict[str, Any], expected: dict[str, Any]) -> None:
     if expected["forecastAvailable"]:
         expected_date = date.fromisoformat(expected["forecastDate"][:10])
         assert actual["forecastDate"] == expected_date
-        assert actual["forecastRecentWeeklyHours"] == expected["forecastRecentWeeklyHours"]
+        assert (
+            actual["forecastRecentWeeklyHours"] == expected["forecastRecentWeeklyHours"]
+        )
     else:
         assert actual["forecastDate"] is None
 
@@ -287,4 +295,6 @@ def test_coordinator_parsing_matches_fixture(fixtures: dict[str, Any]) -> None:
         except AssertionError as exc:
             failures.append(f"{name}: {exc}")
 
-    assert not failures, "Scenarios whose parsed values don't match the fixture:\n" + "\n".join(failures)
+    assert not failures, (
+        "Scenarios whose parsed values don't match the fixture:\n" + "\n".join(failures)
+    )

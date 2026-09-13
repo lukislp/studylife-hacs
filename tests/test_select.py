@@ -8,6 +8,7 @@ attribute assertions direct while still exercising the real
 `RestoreEntity`/`CoordinatorEntity` machinery (`entity.hass` +
 `mock_restore_cache` are the real HA restore-state plumbing, not mocked out).
 """
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -93,7 +94,10 @@ def test_current_option_defaults_to_first_option_with_no_prior_state(
 ) -> None:
     """With nothing selected yet (fresh entity, no restore), current_option falls
     back to the first available option."""
-    courses = [make_course(id=1, name="Algorithms"), make_course(id=2, name="Databases")]
+    courses = [
+        make_course(id=1, name="Algorithms"),
+        make_course(id=2, name="Databases"),
+    ]
     data = _make_data(courses=courses, selected=[1, 2])
     entity = _build_entity(hass, mock_config_entry, data)
 
@@ -110,7 +114,10 @@ async def test_restore_accepts_selection_still_in_options(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ) -> None:
     """A restored last state that's still a valid option becomes current_option."""
-    courses = [make_course(id=1, name="Algorithms"), make_course(id=2, name="Databases")]
+    courses = [
+        make_course(id=1, name="Algorithms"),
+        make_course(id=2, name="Databases"),
+    ]
     data = _make_data(courses=courses, selected=[1, 2])
     entity = _build_entity(hass, mock_config_entry, data)
     mock_restore_cache(hass, [State(ENTITY_ID, "Databases")])
@@ -126,7 +133,10 @@ async def test_restore_rejects_selection_no_longer_in_options(
     """A restored last state for a course that's since been deselected/completed
     is NOT accepted - current_option falls back to options[0] instead of the
     stale value."""
-    courses = [make_course(id=1, name="Algorithms"), make_course(id=2, name="Databases")]
+    courses = [
+        make_course(id=1, name="Algorithms"),
+        make_course(id=2, name="Databases"),
+    ]
     # The restored course ("Networks") isn't in the active set anymore.
     data = _make_data(courses=courses, selected=[1, 2])
     entity = _build_entity(hass, mock_config_entry, data)
@@ -148,7 +158,10 @@ async def test_async_select_option_is_local_only(
 ) -> None:
     """Selecting an option just updates local state - no API call, no coordinator
     refresh."""
-    courses = [make_course(id=1, name="Algorithms"), make_course(id=2, name="Databases")]
+    courses = [
+        make_course(id=1, name="Algorithms"),
+        make_course(id=2, name="Databases"),
+    ]
     data = _make_data(courses=courses, selected=[1, 2])
     entity = _build_entity(hass, mock_config_entry, data, client=mock_api_client)
     coordinator = entity.coordinator

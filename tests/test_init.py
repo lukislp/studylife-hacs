@@ -1,5 +1,6 @@
 """Tests for the StudyLife integration's setup/unload entry points
 (custom_components/studylife/__init__.py)."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -84,7 +85,9 @@ async def test_setup_entry_first_refresh_failure_retries_setup(
         await hass.async_block_till_done()
 
     assert mock_config_entry.state is ConfigEntryState.SETUP_RETRY
-    assert DOMAIN not in hass.data or mock_config_entry.entry_id not in hass.data[DOMAIN]
+    assert (
+        DOMAIN not in hass.data or mock_config_entry.entry_id not in hass.data[DOMAIN]
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +106,9 @@ async def test_update_listener_skips_reload_when_nothing_relevant_changed(
         await hass.config_entries.async_setup(mock_config_entry.entry_id)
         await hass.async_block_till_done()
 
-    with patch.object(hass.config_entries, "async_reload", AsyncMock(return_value=True)) as mock_reload:
+    with patch.object(
+        hass.config_entries, "async_reload", AsyncMock(return_value=True)
+    ) as mock_reload:
         # Explicit scan_interval equal to the default the coordinator was already
         # built with - a real change to entry.options (from {} to a populated
         # dict), so HA still fires the update listener, but nothing the
@@ -127,7 +132,9 @@ async def test_update_listener_reloads_when_scan_interval_changed(
         await hass.config_entries.async_setup(mock_config_entry.entry_id)
         await hass.async_block_till_done()
 
-    with patch.object(hass.config_entries, "async_reload", AsyncMock(return_value=True)) as mock_reload:
+    with patch.object(
+        hass.config_entries, "async_reload", AsyncMock(return_value=True)
+    ) as mock_reload:
         hass.config_entries.async_update_entry(
             mock_config_entry, options={CONF_SCAN_INTERVAL: 60}
         )
@@ -147,7 +154,9 @@ async def test_update_listener_reloads_when_api_key_changed(
         await hass.config_entries.async_setup(mock_config_entry.entry_id)
         await hass.async_block_till_done()
 
-    with patch.object(hass.config_entries, "async_reload", AsyncMock(return_value=True)) as mock_reload:
+    with patch.object(
+        hass.config_entries, "async_reload", AsyncMock(return_value=True)
+    ) as mock_reload:
         hass.config_entries.async_update_entry(
             mock_config_entry,
             data={**mock_config_entry.data, CONF_API_KEY: "rotated-key"},

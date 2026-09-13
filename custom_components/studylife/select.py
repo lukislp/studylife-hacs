@@ -23,6 +23,7 @@ whatever the app is set to; per-programme copies would just multiply pickers
 whose selections feed the same global services. Switch the app's active
 programme (studylife.set_active_program) and the option list follows.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -42,7 +43,11 @@ def _active_courses(data: StudyLifeData) -> list[dict[str, Any]]:
     """Courses the user selected in Setup and hasn't marked completed yet."""
     selected_ids = set(data.settings.get("selectedCourseIds") or [])
     completed_ids = set(data.settings.get("completedCourseIds") or [])
-    return [c for c in data.courses if c["id"] in selected_ids and c["id"] not in completed_ids]
+    return [
+        c
+        for c in data.courses
+        if c["id"] in selected_ids and c["id"] not in completed_ids
+    ]
 
 
 async def async_setup_entry(

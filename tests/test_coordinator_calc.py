@@ -17,6 +17,7 @@ mapping layer - the actual math (is 20h against a 25-30h target really an 11.6% 
 with a warning?) is StudyLife.Shared's responsibility now, pinned by ITS OWN golden
 fixtures server-side, not duplicated here.
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -91,7 +92,9 @@ def test_week_start_returns_monday_for_any_weekday() -> None:
 
 
 def test_to_session_maps_every_field() -> None:
-    raw = make_raw_session(id=7, course_id=3, topic="Chapter 1", notes="note", recurrence_group_id="g1")
+    raw = make_raw_session(
+        id=7, course_id=3, topic="Chapter 1", notes="note", recurrence_group_id="g1"
+    )
     session = _to_session(raw)
     assert session.id == 7
     assert session.course_id == 3
@@ -114,7 +117,12 @@ def test_to_timer_state_maps_phase_ends_at_only_when_present() -> None:
     assert idle.phase_ends_at is None
 
     running_focus = _to_timer_state(
-        {"sessionId": 1, "isRunning": True, "isBreak": False, "phaseEndsAt": "2026-01-06T10:30:00"}
+        {
+            "sessionId": 1,
+            "isRunning": True,
+            "isBreak": False,
+            "phaseEndsAt": "2026-01-06T10:30:00",
+        }
     )
     assert running_focus.phase == "focus"
     assert running_focus.phase_ends_at == datetime(2026, 1, 6, 10, 30)
@@ -129,9 +137,23 @@ def test_to_timer_state_maps_phase_ends_at_only_when_present() -> None:
 
 
 def test_parse_quota_maps_every_field_and_drops_min_percent() -> None:
-    raw = make_raw_quota(hours=20.0, target_min=25.0, target_max=30.0, percent=57.9, warning=True, missing_hours=5.0)
+    raw = make_raw_quota(
+        hours=20.0,
+        target_min=25.0,
+        target_max=30.0,
+        percent=57.9,
+        warning=True,
+        missing_hours=5.0,
+    )
     quota = _parse_quota(raw)
-    assert quota == QuotaInfo(hours=20.0, target_min=25.0, target_max=30.0, percent=57.9, warning=True, missing_hours=5.0)
+    assert quota == QuotaInfo(
+        hours=20.0,
+        target_min=25.0,
+        target_max=30.0,
+        percent=57.9,
+        warning=True,
+        missing_hours=5.0,
+    )
     # minPercent is part of the wire contract but QuotaInfo has no field for it - the
     # contract test above only asserts the fields QuotaInfo DOES have still round-trip.
 
@@ -142,13 +164,32 @@ def test_parse_quota_maps_every_field_and_drops_min_percent() -> None:
 
 
 def test_parse_forecast_unavailable_returns_none_pair() -> None:
-    assert _parse_forecast({"available": False, "alreadyDone": True, "date": None, "recentWeeklyHours": 0.0}) == (None, None)
-    assert _parse_forecast({"available": False, "alreadyDone": False, "date": None, "recentWeeklyHours": 0.0}) == (None, None)
+    assert _parse_forecast(
+        {
+            "available": False,
+            "alreadyDone": True,
+            "date": None,
+            "recentWeeklyHours": 0.0,
+        }
+    ) == (None, None)
+    assert _parse_forecast(
+        {
+            "available": False,
+            "alreadyDone": False,
+            "date": None,
+            "recentWeeklyHours": 0.0,
+        }
+    ) == (None, None)
 
 
 def test_parse_forecast_available_parses_date_and_pace() -> None:
     forecast_date, recent_weekly_hours = _parse_forecast(
-        {"available": True, "alreadyDone": False, "date": "2028-07-08", "recentWeeklyHours": 12.5}
+        {
+            "available": True,
+            "alreadyDone": False,
+            "date": "2028-07-08",
+            "recentWeeklyHours": 12.5,
+        }
     )
     assert forecast_date == date(2028, 7, 8)
     assert recent_weekly_hours == 12.5
@@ -161,20 +202,46 @@ def test_parse_forecast_available_parses_date_and_pace() -> None:
 
 def test_parse_next_course_goal_maps_fields() -> None:
     goal = _parse_next_course_goal(
-        {"courseId": 3, "courseName": "Algorithms", "targetDate": "2026-09-15", "daysLeft": 20}
+        {
+            "courseId": 3,
+            "courseName": "Algorithms",
+            "targetDate": "2026-09-15",
+            "daysLeft": 20,
+        }
     )
-    assert goal == NextCourseGoal(course_id=3, course_name="Algorithms", target_date=date(2026, 9, 15), days_remaining=20)
+    assert goal == NextCourseGoal(
+        course_id=3,
+        course_name="Algorithms",
+        target_date=date(2026, 9, 15),
+        days_remaining=20,
+    )
 
 
 def test_parse_course_hours_maps_list_preserving_order() -> None:
     raw = [
-        {"courseId": 1, "courseName": "A", "courseColor": "#fff", "hours": 40.0, "sessionCount": 22},
-        {"courseId": 2, "courseName": "B", "courseColor": "#000", "hours": 10.0, "sessionCount": 5},
+        {
+            "courseId": 1,
+            "courseName": "A",
+            "courseColor": "#fff",
+            "hours": 40.0,
+            "sessionCount": 22,
+        },
+        {
+            "courseId": 2,
+            "courseName": "B",
+            "courseColor": "#000",
+            "hours": 10.0,
+            "sessionCount": 5,
+        },
     ]
     result = _parse_course_hours(raw)
     assert result == [
-        CourseHours(course_id=1, course_name="A", course_color="#fff", hours=40.0, sessions=22),
-        CourseHours(course_id=2, course_name="B", course_color="#000", hours=10.0, sessions=5),
+        CourseHours(
+            course_id=1, course_name="A", course_color="#fff", hours=40.0, sessions=22
+        ),
+        CourseHours(
+            course_id=2, course_name="B", course_color="#000", hours=10.0, sessions=5
+        ),
     ]
 
 
@@ -184,29 +251,57 @@ def test_parse_neglected_course_none_stays_none() -> None:
 
 def test_parse_neglected_course_maps_populated_object() -> None:
     result = _parse_neglected_course(
-        {"courseId": 12, "courseName": "Databases", "lastStudied": "2026-07-01", "daysSince": 56}
+        {
+            "courseId": 12,
+            "courseName": "Databases",
+            "lastStudied": "2026-07-01",
+            "daysSince": 56,
+        }
     )
-    assert result == NeglectedCourse(course_id=12, course_name="Databases", last_studied=date(2026, 7, 1), days_since=56)
+    assert result == NeglectedCourse(
+        course_id=12,
+        course_name="Databases",
+        last_studied=date(2026, 7, 1),
+        days_since=56,
+    )
 
 
 def test_parse_neglected_course_never_studied_has_no_last_studied() -> None:
-    result = _parse_neglected_course({"courseId": 2, "courseName": "B", "lastStudied": None, "daysSince": None})
+    result = _parse_neglected_course(
+        {"courseId": 2, "courseName": "B", "lastStudied": None, "daysSince": None}
+    )
     assert result.last_studied is None
     assert result.days_since is None
 
 
 def test_parse_weekly_report_maps_fields() -> None:
     report = _parse_weekly_report(
-        {"weekId": "2026-W34", "hours": 18.5, "deltaVsPreviousWeek": 2.0, "topCourseName": "Algorithms", "sessionCount": 6}
+        {
+            "weekId": "2026-W34",
+            "hours": 18.5,
+            "deltaVsPreviousWeek": 2.0,
+            "topCourseName": "Algorithms",
+            "sessionCount": 6,
+        }
     )
     assert report == WeeklyReport(
-        week_id="2026-W34", hours=18.5, delta_vs_previous_week_hours=2.0, top_course="Algorithms", sessions_count=6
+        week_id="2026-W34",
+        hours=18.5,
+        delta_vs_previous_week_hours=2.0,
+        top_course="Algorithms",
+        sessions_count=6,
     )
 
 
 def test_parse_weekly_report_no_top_course_is_none() -> None:
     report = _parse_weekly_report(
-        {"weekId": "2026-W34", "hours": 0.0, "deltaVsPreviousWeek": 0.0, "topCourseName": None, "sessionCount": 0}
+        {
+            "weekId": "2026-W34",
+            "hours": 0.0,
+            "deltaVsPreviousWeek": 0.0,
+            "topCourseName": None,
+            "sessionCount": 0,
+        }
     )
     assert report.top_course is None
 
@@ -234,8 +329,18 @@ def test_program_data_from_summary_maps_every_field() -> None:
         forecast_date="2028-07-08",
         forecast_recent_weekly_hours=0.0,
         upcoming_course_goals=[
-            {"courseId": 3, "courseName": "Algorithms", "targetDate": "2026-09-15", "daysLeft": 20},
-            {"courseId": 4, "courseName": "Databases", "targetDate": "2026-10-01", "daysLeft": 36},
+            {
+                "courseId": 3,
+                "courseName": "Algorithms",
+                "targetDate": "2026-09-15",
+                "daysLeft": 20,
+            },
+            {
+                "courseId": 4,
+                "courseName": "Databases",
+                "targetDate": "2026-10-01",
+                "daysLeft": 36,
+            },
         ],
     )
 
@@ -263,7 +368,9 @@ def test_program_data_from_summary_maps_every_field() -> None:
 
 
 def test_program_data_from_summary_no_upcoming_goals_means_no_next_goal() -> None:
-    program = StudyProgram(id=None, name="Built-in", is_built_in=True, is_completed=False)
+    program = StudyProgram(
+        id=None, name="Built-in", is_built_in=True, is_completed=False
+    )
     raw_summary = make_raw_metrics_summary(upcoming_course_goals=[])
     data = _program_data_from_summary(program, True, [], [], raw_summary)
     assert data.next_course_goal is None
@@ -271,7 +378,9 @@ def test_program_data_from_summary_no_upcoming_goals_means_no_next_goal() -> Non
 
 
 def test_program_data_from_summary_average_grade_none_passes_through() -> None:
-    program = StudyProgram(id=None, name="Built-in", is_built_in=True, is_completed=False)
+    program = StudyProgram(
+        id=None, name="Built-in", is_built_in=True, is_completed=False
+    )
     raw_summary = make_raw_metrics_summary(average_grade=None)
     data = _program_data_from_summary(program, True, [], [], raw_summary)
     assert data.average_grade is None
@@ -289,7 +398,9 @@ def test_fmt_tier_strips_trailing_zero_but_keeps_fractions() -> None:
 
 
 def test_to_achievement_known_category_gets_local_icon_and_name() -> None:
-    tier = make_raw_achievement_tier(category="hours", threshold=25, unlocked=True, current=340.0)
+    tier = make_raw_achievement_tier(
+        category="hours", threshold=25, unlocked=True, current=340.0
+    )
     achievement = _to_achievement(tier)
     assert achievement.icon == "⏱"
     assert achievement.name == "25h studied"
@@ -305,11 +416,23 @@ def test_to_achievement_all_known_categories_produce_a_name() -> None:
     silent fallback to the raw category string would be a real (if minor) UX regression
     a dashboard user would notice."""
     for category in (
-        "hours", "streak", "sessions", "courses", "allcourses",
-        "earlybird", "nightowl", "weekend", "marathon", "perfectweek",
-        "notes", "coursediversity", "programs",
+        "hours",
+        "streak",
+        "sessions",
+        "courses",
+        "allcourses",
+        "earlybird",
+        "nightowl",
+        "weekend",
+        "marathon",
+        "perfectweek",
+        "notes",
+        "coursediversity",
+        "programs",
     ):
-        tier = make_raw_achievement_tier(category=category, threshold=1, unlocked=False, current=0)
+        tier = make_raw_achievement_tier(
+            category=category, threshold=1, unlocked=False, current=0
+        )
         achievement = _to_achievement(tier)
         assert achievement.name
         assert achievement.icon
@@ -319,7 +442,9 @@ def test_to_achievement_all_known_categories_produce_a_name() -> None:
 def test_to_achievement_unknown_category_falls_back_defensively() -> None:
     """Forward-compat: a category this HA version doesn't know about yet (server added a
     new one) must still produce a usable Achievement, not crash the whole refresh."""
-    tier = make_raw_achievement_tier(category="brandnew", threshold=3, unlocked=True, current=3)
+    tier = make_raw_achievement_tier(
+        category="brandnew", threshold=3, unlocked=True, current=3
+    )
     achievement = _to_achievement(tier)
     assert achievement.category == "brandnew"
     assert "3" in achievement.name
@@ -327,7 +452,9 @@ def test_to_achievement_unknown_category_falls_back_defensively() -> None:
 
 
 def test_to_achievement_allcourses_name_ignores_threshold() -> None:
-    tier = make_raw_achievement_tier(category="allcourses", threshold=1, unlocked=True, current=1)
+    tier = make_raw_achievement_tier(
+        category="allcourses", threshold=1, unlocked=True, current=1
+    )
     assert _to_achievement(tier).name == "All courses completed"
 
 
@@ -336,9 +463,15 @@ def test_parse_achievements_maps_tiers_and_reports_server_unlocked_count() -> No
         "unlocked": 2,
         "total": 3,
         "tiers": [
-            make_raw_achievement_tier(category="hours", threshold=25, unlocked=True, current=340.0),
-            make_raw_achievement_tier(category="streak", threshold=7, unlocked=True, current=12),
-            make_raw_achievement_tier(category="streak", threshold=30, unlocked=False, current=12),
+            make_raw_achievement_tier(
+                category="hours", threshold=25, unlocked=True, current=340.0
+            ),
+            make_raw_achievement_tier(
+                category="streak", threshold=7, unlocked=True, current=12
+            ),
+            make_raw_achievement_tier(
+                category="streak", threshold=30, unlocked=False, current=12
+            ),
         ],
     }
     achievements, unlocked = _parse_achievements(raw)
@@ -350,7 +483,9 @@ def test_parse_achievements_maps_tiers_and_reports_server_unlocked_count() -> No
 
 
 def test_parse_achievements_empty_tiers() -> None:
-    achievements, unlocked = _parse_achievements({"unlocked": 0, "total": 0, "tiers": []})
+    achievements, unlocked = _parse_achievements(
+        {"unlocked": 0, "total": 0, "tiers": []}
+    )
     assert achievements == []
     assert unlocked == 0
 
@@ -368,7 +503,9 @@ def test_topics_by_course_skips_goal_for_course_with_no_catalog_topics() -> None
 
 def test_topics_by_course_skips_goal_for_course_missing_from_catalog() -> None:
     courses = [make_course(id=999, topics=["A", "B"])]
-    goals = [make_course_goal(course_id=100, completed_topics="A")]  # course 100 not in catalog
+    goals = [
+        make_course_goal(course_id=100, completed_topics="A")
+    ]  # course 100 not in catalog
     assert _topics_by_course(goals, courses) == []
 
 
@@ -378,11 +515,18 @@ def test_topics_by_course_only_includes_courses_with_progress() -> None:
         make_course(id=200, name="Databases", topics=["X", "Y"]),
     ]
     goals = [
-        make_course_goal(course_id=100, course_name="Algorithms", completed_topics="A,B"),
+        make_course_goal(
+            course_id=100, course_name="Algorithms", completed_topics="A,B"
+        ),
         # no topics done yet for course 200 -> excluded from the breakdown.
         make_course_goal(course_id=200, course_name="Databases", completed_topics=""),
     ]
     breakdown = _topics_by_course(goals, courses)
     assert breakdown == [
-        {"course_id": 100, "course_name": "Algorithms", "topics_completed": 2, "topics_total": 3}
+        {
+            "course_id": 100,
+            "course_name": "Algorithms",
+            "topics_completed": 2,
+            "topics_total": 3,
+        }
     ]

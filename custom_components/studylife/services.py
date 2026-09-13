@@ -4,6 +4,7 @@ Mirrors what the Calendar/Setup pages do client-side (POST/PUT/DELETE
 /api/sessions, PUT /api/coursegoals/{courseId}) - see docs/ARCHITECTURE.md
 for the DTO shapes.
 """
+
 from __future__ import annotations
 
 from collections.abc import Awaitable
@@ -157,7 +158,9 @@ async def _write_with_stale_catalog_handling(
         ) from err
 
 
-def _resolve_coordinator(hass: HomeAssistant, call: ServiceCall) -> StudyLifeCoordinator:
+def _resolve_coordinator(
+    hass: HomeAssistant, call: ServiceCall
+) -> StudyLifeCoordinator:
     entries: dict[str, StudyLifeCoordinator] = hass.data.get(DOMAIN, {})
     if not entries:
         raise HomeAssistantError(
@@ -225,7 +228,9 @@ async def async_register_services(hass: HomeAssistant) -> None:
     async def handle_update_session(call: ServiceCall) -> None:
         coordinator = _resolve_coordinator(hass, call)
         session_id = call.data["session_id"]
-        existing = next((s for s in coordinator.data.sessions if s.id == session_id), None)
+        existing = next(
+            (s for s in coordinator.data.sessions if s.id == session_id), None
+        )
         if existing is None:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -234,7 +239,9 @@ async def async_register_services(hass: HomeAssistant) -> None:
             )
 
         new_course_id = call.data.get("course_id")
-        changing_course = new_course_id is not None and new_course_id != existing.course_id
+        changing_course = (
+            new_course_id is not None and new_course_id != existing.course_id
+        )
         # course_name/course_color in call.data are deprecated/ignored - see the
         # comment in handle_create_session. When the course isn't changing, the
         # existing session's name/color (already catalog-valid) are kept as-is;
@@ -248,21 +255,29 @@ async def async_register_services(hass: HomeAssistant) -> None:
             course_name = existing.course_name
             course_color = existing.course_color
 
-        effective_course_id = new_course_id if new_course_id is not None else existing.course_id
+        effective_course_id = (
+            new_course_id if new_course_id is not None else existing.course_id
+        )
         payload = {
             "id": session_id,
             "courseId": effective_course_id,
             "courseName": course_name,
             "courseColor": course_color,
-            "startTime": _to_naive_iso(call.data["start_time"]) if "start_time" in call.data else existing.start.isoformat(),
-            "endTime": _to_naive_iso(call.data["end_time"]) if "end_time" in call.data else existing.end.isoformat(),
+            "startTime": _to_naive_iso(call.data["start_time"])
+            if "start_time" in call.data
+            else existing.start.isoformat(),
+            "endTime": _to_naive_iso(call.data["end_time"])
+            if "end_time" in call.data
+            else existing.end.isoformat(),
             "topic": call.data.get("topic", existing.topic),
             "notes": call.data.get("notes", existing.notes),
             "isCompleted": call.data.get("is_completed", existing.is_completed),
             "timerModeId": call.data.get("timer_mode_id", existing.timer_mode_id),
         }
         await _write_with_stale_catalog_handling(
-            coordinator, effective_course_id, coordinator.client.async_update_session(session_id, payload)
+            coordinator,
+            effective_course_id,
+            coordinator.client.async_update_session(session_id, payload),
         )
         await coordinator.async_request_refresh()
 
@@ -281,7 +296,12 @@ async def async_register_services(hass: HomeAssistant) -> None:
         course = _require_course(coordinator, course_id)
         course_name = course["name"]
         existing = next(
-            (g for g in coordinator.data.course_goals if g.get("courseId") == course_id), None
+            (
+                g
+                for g in coordinator.data.course_goals
+                if g.get("courseId") == course_id
+            ),
+            None,
         )
         target_date = call.data.get("target_date")
         payload = {
@@ -292,14 +312,18 @@ async def async_register_services(hass: HomeAssistant) -> None:
                 if target_date is not None
                 else (existing.get("targetDate") if existing else None)
             ),
-            "grade": call.data.get("grade", existing.get("grade") if existing else None),
+            "grade": call.data.get(
+                "grade", existing.get("grade") if existing else None
+            ),
             "completionNote": call.data.get(
                 "completion_note", existing.get("completionNote") if existing else None
             ),
             "completedAt": existing.get("completedAt") if existing else None,
         }
         await _write_with_stale_catalog_handling(
-            coordinator, course_id, coordinator.client.async_set_course_goal(course_id, payload)
+            coordinator,
+            course_id,
+            coordinator.client.async_set_course_goal(course_id, payload),
         )
         await coordinator.async_request_refresh()
 
@@ -341,20 +365,38 @@ async def async_register_services(hass: HomeAssistant) -> None:
         await coordinator.async_request_refresh()
 
     hass.services.async_register(
-        DOMAIN, SERVICE_CREATE_SESSION, handle_create_session, schema=CREATE_SESSION_SCHEMA
+        DOMAIN,
+        SERVICE_CREATE_SESSION,
+        handle_create_session,
+        schema=CREATE_SESSION_SCHEMA,
     )
     hass.services.async_register(
-        DOMAIN, SERVICE_UPDATE_SESSION, handle_update_session, schema=UPDATE_SESSION_SCHEMA
+        DOMAIN,
+        SERVICE_UPDATE_SESSION,
+        handle_update_session,
+        schema=UPDATE_SESSION_SCHEMA,
     )
     hass.services.async_register(
-        DOMAIN, SERVICE_DELETE_SESSION, handle_delete_session, schema=DELETE_SESSION_SCHEMA
+        DOMAIN,
+        SERVICE_DELETE_SESSION,
+        handle_delete_session,
+        schema=DELETE_SESSION_SCHEMA,
     )
     hass.services.async_register(
-        DOMAIN, SERVICE_SET_COURSE_GOAL, handle_set_course_goal, schema=SET_COURSE_GOAL_SCHEMA
+        DOMAIN,
+        SERVICE_SET_COURSE_GOAL,
+        handle_set_course_goal,
+        schema=SET_COURSE_GOAL_SCHEMA,
     )
     hass.services.async_register(
-        DOMAIN, SERVICE_GENERATE_EXAM_PLAN, handle_generate_exam_plan, schema=GENERATE_EXAM_PLAN_SCHEMA
+        DOMAIN,
+        SERVICE_GENERATE_EXAM_PLAN,
+        handle_generate_exam_plan,
+        schema=GENERATE_EXAM_PLAN_SCHEMA,
     )
     hass.services.async_register(
-        DOMAIN, SERVICE_SET_ACTIVE_PROGRAM, handle_set_active_program, schema=SET_ACTIVE_PROGRAM_SCHEMA
+        DOMAIN,
+        SERVICE_SET_ACTIVE_PROGRAM,
+        handle_set_active_program,
+        schema=SET_ACTIVE_PROGRAM_SCHEMA,
     )

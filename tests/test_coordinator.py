@@ -1,4 +1,5 @@
 """Tests for StudyLifeCoordinator (custom_components/studylife/coordinator.py)."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -37,7 +38,9 @@ async def _capture_weekly_report_events(hass: HomeAssistant) -> list:
     return captured
 
 
-async def test_refresh_populates_data(hass: HomeAssistant, mock_api_client: AsyncMock) -> None:
+async def test_refresh_populates_data(
+    hass: HomeAssistant, mock_api_client: AsyncMock
+) -> None:
     """A successful refresh should produce a fully-populated StudyLifeData."""
     mock_api_client.async_get_sessions.return_value = [
         make_raw_session(id=1, course_id=100, is_completed=True),
@@ -73,7 +76,9 @@ async def test_auth_error_maps_to_config_entry_auth_failed(
     last_exception/last_update_success instead of raising - see
     DataUpdateCoordinator._async_refresh.
     """
-    mock_api_client.async_get_sessions.side_effect = StudyLifeApiAuthError("401 rejected")
+    mock_api_client.async_get_sessions.side_effect = StudyLifeApiAuthError(
+        "401 rejected"
+    )
 
     coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
     await coordinator.async_refresh()
@@ -92,7 +97,9 @@ async def test_api_error_maps_to_update_failed(
     hass: HomeAssistant, mock_api_client: AsyncMock
 ) -> None:
     """StudyLifeApiError from any fetch call should surface as UpdateFailed."""
-    mock_api_client.async_get_settings.side_effect = StudyLifeApiError("server unreachable")
+    mock_api_client.async_get_settings.side_effect = StudyLifeApiError(
+        "server unreachable"
+    )
 
     coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
     await coordinator.async_refresh()
@@ -205,17 +212,26 @@ async def test_weekly_report_event_fired_when_week_changes(
 
     summary_week_1 = make_raw_metrics_summary(
         weekly_report={
-            "weekId": "2026-W10", "hours": 5.0, "deltaVsPreviousWeek": 1.0,
-            "topCourseName": "Algorithms", "sessionCount": 3,
+            "weekId": "2026-W10",
+            "hours": 5.0,
+            "deltaVsPreviousWeek": 1.0,
+            "topCourseName": "Algorithms",
+            "sessionCount": 3,
         }
     )
     summary_week_2 = make_raw_metrics_summary(
         weekly_report={
-            "weekId": "2026-W11", "hours": 7.5, "deltaVsPreviousWeek": 2.5,
-            "topCourseName": "Databases", "sessionCount": 4,
+            "weekId": "2026-W11",
+            "hours": 7.5,
+            "deltaVsPreviousWeek": 2.5,
+            "topCourseName": "Databases",
+            "sessionCount": 4,
         }
     )
-    mock_api_client.async_get_metrics_summary.side_effect = [summary_week_1, summary_week_2]
+    mock_api_client.async_get_metrics_summary.side_effect = [
+        summary_week_1,
+        summary_week_2,
+    ]
 
     coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
 
@@ -255,7 +271,10 @@ async def test_multiple_study_programs_fetch_courses_and_summary_per_program(
     assert mock_api_client.async_get_courses.call_count == 2
     assert mock_api_client.async_get_courses.call_args_list == [call(0), call(5)]
     assert mock_api_client.async_get_metrics_summary.call_count == 2
-    assert mock_api_client.async_get_metrics_summary.call_args_list == [call(0), call(5)]
+    assert mock_api_client.async_get_metrics_summary.call_args_list == [
+        call(0),
+        call(5),
+    ]
     assert set(coordinator.data.programs.keys()) == {"builtin", "5"}
 
 
@@ -327,8 +346,11 @@ async def test_top_level_metrics_come_from_active_programs_summary_response(
         ects_total=180,
         average_grade=2.23,
         weekly_report={
-            "weekId": "2026-W28", "hours": 3.0, "deltaVsPreviousWeek": 2.0,
-            "topCourseName": "A", "sessionCount": 2,
+            "weekId": "2026-W28",
+            "hours": 3.0,
+            "deltaVsPreviousWeek": 2.0,
+            "topCourseName": "A",
+            "sessionCount": 2,
         },
     )
 
@@ -376,8 +398,21 @@ async def test_neglected_course_course_hours_topics_and_month_comparison_from_su
     neglected_course, topics_completed/total, month_hours_current/delta) are populated
     from the active programme's summary response too, not left at empty defaults."""
     mock_api_client.async_get_metrics_summary.return_value = make_raw_metrics_summary(
-        neglected_course={"courseId": 12, "courseName": "Databases", "lastStudied": "2026-07-01", "daysSince": 56},
-        course_hours=[{"courseId": 1, "courseName": "A", "courseColor": "#fff", "hours": 40.0, "sessionCount": 22}],
+        neglected_course={
+            "courseId": 12,
+            "courseName": "Databases",
+            "lastStudied": "2026-07-01",
+            "daysSince": 56,
+        },
+        course_hours=[
+            {
+                "courseId": 1,
+                "courseName": "A",
+                "courseColor": "#fff",
+                "hours": 40.0,
+                "sessionCount": 22,
+            }
+        ],
         topics_completed=34,
         topics_total=60,
         current_month_hours=12.5,
@@ -411,8 +446,14 @@ async def test_topics_by_course_breakdown_still_derived_locally_from_course_goal
         make_course(id=100, name="Algorithms", topics=["A", "B", "C"])
     ]
     mock_api_client.async_get_course_goals.return_value = [
-        {"courseId": 100, "courseName": "Algorithms", "grade": None, "targetDate": None,
-         "completedAt": None, "completedTopics": "A,B"}
+        {
+            "courseId": 100,
+            "courseName": "Algorithms",
+            "grade": None,
+            "targetDate": None,
+            "completedAt": None,
+            "completedTopics": "A,B",
+        }
     ]
 
     coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
@@ -420,7 +461,12 @@ async def test_topics_by_course_breakdown_still_derived_locally_from_course_goal
 
     assert coordinator.last_update_success is True
     assert coordinator.data.topics_by_course == [
-        {"course_id": 100, "course_name": "Algorithms", "topics_completed": 2, "topics_total": 3}
+        {
+            "course_id": 100,
+            "course_name": "Algorithms",
+            "topics_completed": 2,
+            "topics_total": 3,
+        }
     ]
 
 
@@ -445,8 +491,12 @@ async def test_week_sessions_excludes_future_dated_session_beyond_this_week(
     week_sessions list, not silently inflate it - unlike week_hours (a metric, now purely
     server-sourced), this list is still built locally from `history`."""
     history = [
-        make_raw_session(id=1, start="2026-01-06T09:00:00", end="2026-01-06T11:00:00"),  # this week
-        make_raw_session(id=2, start="2026-02-02T09:00:00", end="2026-02-02T13:00:00"),  # ~4 weeks out
+        make_raw_session(
+            id=1, start="2026-01-06T09:00:00", end="2026-01-06T11:00:00"
+        ),  # this week
+        make_raw_session(
+            id=2, start="2026-02-02T09:00:00", end="2026-02-02T13:00:00"
+        ),  # ~4 weeks out
     ]
     mock_api_client.async_get_session_history.return_value = history
 
@@ -468,9 +518,13 @@ async def test_week_hours_reflects_whatever_the_summary_endpoint_says_regardless
     for it now (the server), and this test would fail if any local recomputation crept
     back in."""
     mock_api_client.async_get_session_history.return_value = [
-        make_raw_session(id=1, start="2025-01-06T09:00:00", end="2025-01-06T11:00:00"),  # a year old
+        make_raw_session(
+            id=1, start="2025-01-06T09:00:00", end="2025-01-06T11:00:00"
+        ),  # a year old
     ]
-    mock_api_client.async_get_metrics_summary.return_value = make_raw_metrics_summary(week_hours=99.5)
+    mock_api_client.async_get_metrics_summary.return_value = make_raw_metrics_summary(
+        week_hours=99.5
+    )
 
     coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
     await coordinator.async_refresh()

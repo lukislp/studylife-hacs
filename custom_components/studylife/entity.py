@@ -6,6 +6,7 @@ timer, notes, calendars, course picker, ...) plus one device PER STUDY PROGRAMME
 sensors. Programme devices hang off the hub via `via_device`, so the HA UI shows
 them as children of the StudyLife server they belong to.
 """
+
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
@@ -78,7 +79,9 @@ class StudyLifeProgramEntity(StudyLifeEntity):
         program_id: str,
         program_name: str,
     ) -> None:
-        super().__init__(coordinator, entry, key, program_id=program_id, program_name=program_name)
+        super().__init__(
+            coordinator, entry, key, program_id=program_id, program_name=program_name
+        )
         self._program_id = program_id
 
     @property

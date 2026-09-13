@@ -6,6 +6,7 @@ Reads totals.percent_covered (pytest --cov-report=json:coverage.json) and
 writes it in the schema shields.io/endpoint expects, so the README badge
 can point at the raw GitHub URL of the committed file - no external service.
 """
+
 import json
 import sys
 

@@ -6,6 +6,7 @@ Called by semantic-release's @semantic-release/exec prepare step so the manifest
 user-facing version (shown in Home Assistant's integration info page) never drifts
 from the actual GitHub release tag.
 """
+
 import json
 import re
 import sys
@@ -27,7 +28,9 @@ def main() -> None:
         r'("version"\s*:\s*)"[^"]*"', rf'\g<1>"{version}"', original, count=1
     )
     if count != 1:
-        raise SystemExit(f'could not find a "version" field to update in {MANIFEST_PATH}')
+        raise SystemExit(
+            f'could not find a "version" field to update in {MANIFEST_PATH}'
+        )
 
     with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
         f.write(updated)

@@ -38,6 +38,7 @@ StudyProgramCatalog.CustomCourseIdOffset server-side) still work exactly as befo
 the hub-device entities, calendars and services), and `study_programs`/`active_study_program`
 expose the programme list itself.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -143,6 +144,7 @@ class WeeklyReport:
 class StudyProgram:
     """Mirrors StudyProgramSummaryDto (GET /api/studyprograms). id is None for the
     built-in, fixed catalog - there's exactly one such synthetic entry, always first."""
+
     id: int | None
     name: str
     is_built_in: bool
@@ -165,6 +167,7 @@ class StudyLifeProgramData:
     user's GLOBAL weekly/monthly goals (there are no per-programme targets in
     the app); only the studied-hours numerator is per-programme. Sourced from
     ONE GET /api/metrics/summary?program={id} call - see _program_data_from_summary."""
+
     program: StudyProgram
     is_active: bool
     courses: list[dict[str, Any]]
@@ -308,7 +311,9 @@ def _to_timer_state(raw: dict[str, Any]) -> TimerState:
     )
 
 
-def _topics_by_course(course_goals: list[dict[str, Any]], courses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _topics_by_course(
+    course_goals: list[dict[str, Any]], courses: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """Per-course topic-completion breakdown feeding the topics_progress sensor's `courses`
     attribute - a HA-side-only convenience grouping, NOT a metric: the aggregate completed/
     total counts (`topics_completed`/`topics_total` on StudyLifeData) come from GET
@@ -327,12 +332,14 @@ def _topics_by_course(course_goals: list[dict[str, Any]], courses: list[dict[str
         completed = {t for t in (g.get("completedTopics") or "").split(",") if t}
         done = sum(1 for t in catalog_topics if t in completed)
         if done > 0:
-            breakdown.append({
-                "course_id": g["courseId"],
-                "course_name": g["courseName"],
-                "topics_completed": done,
-                "topics_total": len(catalog_topics),
-            })
+            breakdown.append(
+                {
+                    "course_id": g["courseId"],
+                    "course_name": g["courseName"],
+                    "topics_completed": done,
+                    "topics_total": len(catalog_topics),
+                }
+            )
     return breakdown
 
 
@@ -385,7 +392,9 @@ def _parse_neglected_course(raw: dict[str, Any] | None) -> NeglectedCourse | Non
     return NeglectedCourse(
         course_id=raw["courseId"],
         course_name=raw["courseName"],
-        last_studied=_parse_date(raw["lastStudied"]) if raw.get("lastStudied") else None,
+        last_studied=_parse_date(raw["lastStudied"])
+        if raw.get("lastStudied")
+        else None,
         days_since=raw.get("daysSince"),
     )
 
@@ -412,8 +421,12 @@ def _program_data_from_summary(
     this from raw sessions/settings client-side). `courses`/`course_goals` still come from
     the existing per-programme catalog fetch/global-goals partition (unrelated to metrics,
     kept as-is - see the module docstring)."""
-    forecast_date, forecast_recent_weekly_hours = _parse_forecast(raw_summary["forecast"])
-    upcoming_course_goals = [_parse_next_course_goal(g) for g in raw_summary["upcomingCourseGoals"]]
+    forecast_date, forecast_recent_weekly_hours = _parse_forecast(
+        raw_summary["forecast"]
+    )
+    upcoming_course_goals = [
+        _parse_next_course_goal(g) for g in raw_summary["upcomingCourseGoals"]
+    ]
     hours = raw_summary["hours"]
     return StudyLifeProgramData(
         program=program,
@@ -439,6 +452,7 @@ def _program_data_from_summary(
 
 
 # --- GET /api/metrics/achievements parsing ----------------------------------------------
+
 
 # Icon + English name template per AchievementCatalog category key (src/StudyLife.Shared/
 # AchievementCatalog.cs in the studylife repo - "hours"/"streak"/"sessions"/"courses"/
@@ -493,7 +507,12 @@ def _parse_achievements(raw: dict[str, Any]) -> tuple[list[Achievement], int]:
 class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
     """Coordinates polling of the StudyLife API."""
 
-    def __init__(self, hass: HomeAssistant, client: StudyLifeApiClient, update_interval: timedelta) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        client: StudyLifeApiClient,
+        update_interval: timedelta,
+    ) -> None:
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=update_interval)
         self._client = client
         # Completed-week id seen in the previous refresh cycle; None until the
@@ -512,7 +531,9 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
             # count for its own sensor, not the week_hours float - see _week_start) and
             # inactivity_warning/days_since_last_session (InactivityReminderService's own
             # "last session ever" lookup, which can reach further back than any metric needs).
-            raw_history = await self._client.async_get_session_history(SESSION_HISTORY_DAYS, only_completed=False)
+            raw_history = await self._client.async_get_session_history(
+                SESSION_HISTORY_DAYS, only_completed=False
+            )
             settings = await self._client.async_get_settings()
             raw_notes = await self._client.async_get_notes()
             raw_course_goals = await self._client.async_get_course_goals()
@@ -530,8 +551,12 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
                 pid = raw_program.get("id")
                 key = program_key(pid)
                 resolved_pid = pid if pid is not None else 0
-                raw_courses_by_key[key] = await self._client.async_get_courses(resolved_pid)
-                raw_summary_by_key[key] = await self._client.async_get_metrics_summary(resolved_pid)
+                raw_courses_by_key[key] = await self._client.async_get_courses(
+                    resolved_pid
+                )
+                raw_summary_by_key[key] = await self._client.async_get_metrics_summary(
+                    resolved_pid
+                )
 
             # Resolved here (pure - no I/O, just parsing raw_study_programs/settings already
             # fetched above) rather than after the try block, so the achievements fetch right
@@ -544,7 +569,9 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
                 (p for p in study_programs if p.id == active_program_id),
                 # Defensive fallback (e.g. stale/unknown id): the built-in entry is always
                 # first and always present, mirroring CoursesController's own fallback.
-                study_programs[0] if study_programs else StudyProgram(None, "StudyLife", True, False),
+                study_programs[0]
+                if study_programs
+                else StudyProgram(None, "StudyLife", True, False),
             )
             raw_achievements = await self._client.async_get_metrics_achievements(
                 active_study_program.id if active_study_program.id is not None else 0
@@ -566,7 +593,10 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
 
         achievements, achievements_unlocked = _parse_achievements(raw_achievements)
         active_key = program_key(active_study_program.id)
-        course_ids_by_key = {key: {c["id"] for c in courses} for key, courses in raw_courses_by_key.items()}
+        course_ids_by_key = {
+            key: {c["id"] for c in courses}
+            for key, courses in raw_courses_by_key.items()
+        }
 
         # The ACTIVE programme's catalog, for the hub-device entities/calendars/services -
         # same list a parameterless GET /api/courses would resolve from the settings, just
@@ -580,7 +610,9 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
         # active catalog here scopes every downstream consumer of `course_goals` in one
         # place; the per-programme datasets partition the same raw list per programme.
         active_course_ids = course_ids_by_key.get(active_key, set())
-        course_goals = [g for g in raw_course_goals if g["courseId"] in active_course_ids]
+        course_goals = [
+            g for g in raw_course_goals if g["courseId"] in active_course_ids
+        ]
 
         sessions = [_to_session(s) for s in raw_sessions]
         now = dt_util.now().replace(tzinfo=None)
@@ -594,7 +626,8 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
             (s for s in sessions if s.start.date() == today), key=lambda s: s.start
         )
         active_session = next(
-            (s for s in sessions if not s.is_completed and s.start <= now <= s.end), None
+            (s for s in sessions if not s.is_completed and s.start <= now <= s.end),
+            None,
         )
         upcoming_session = next(
             iter(
@@ -613,13 +646,18 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
         week_start = _week_start(today)
         week_end = week_start + timedelta(days=7)
         week_sessions = sorted(
-            (s for s in history if week_start <= s.start.date() < week_end), key=lambda s: s.start
+            (s for s in history if week_start <= s.start.date() < week_end),
+            key=lambda s: s.start,
         )
 
         # Notes visible to the active programme: general notes without a courseId always
         # stay visible, course-bound ones only if the course belongs to the active study
         # programme - mirrors the scope in Notes.razor/Index.Insights.razor.cs.
-        notes = [n for n in raw_notes if not n.get("courseId") or n["courseId"] in active_course_ids]
+        notes = [
+            n
+            for n in raw_notes
+            if not n.get("courseId") or n["courseId"] in active_course_ids
+        ]
         latest_note = notes[0] if notes else None
 
         # Per-programme stats for EVERY programme (built-in + custom, completed or not) -
@@ -636,7 +674,11 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
                 program=program,
                 is_active=program.id == active_study_program.id,
                 courses=raw_courses_by_key.get(key, []),
-                course_goals=[g for g in raw_course_goals if g["courseId"] in course_ids_by_key.get(key, set())],
+                course_goals=[
+                    g
+                    for g in raw_course_goals
+                    if g["courseId"] in course_ids_by_key.get(key, set())
+                ],
                 raw_summary=raw_summary_by_key[key],
             )
 

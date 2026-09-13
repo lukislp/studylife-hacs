@@ -1,4 +1,5 @@
 """Tests for the StudyLife config flow (user, reauth, reconfigure, options)."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -17,7 +18,9 @@ from custom_components.studylife.const import CONF_SCAN_INTERVAL, DOMAIN
 
 from .conftest import TEST_API_KEY, TEST_URL
 
-PATCH_TARGET = "custom_components.studylife.config_flow.StudyLifeApiClient.async_test_connection"
+PATCH_TARGET = (
+    "custom_components.studylife.config_flow.StudyLifeApiClient.async_test_connection"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -27,7 +30,9 @@ PATCH_TARGET = "custom_components.studylife.config_flow.StudyLifeApiClient.async
 
 async def test_user_step_success(hass: HomeAssistant) -> None:
     """A successful connection test creates an entry with the right data/title."""
-    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "user"
 
@@ -45,7 +50,9 @@ async def test_user_step_success(hass: HomeAssistant) -> None:
 
 async def test_user_step_invalid_auth(hass: HomeAssistant) -> None:
     """StudyLifeApiAuthError surfaces as an invalid_auth form error."""
-    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
 
     with patch(PATCH_TARGET, side_effect=StudyLifeApiAuthError("nope")):
         result2 = await hass.config_entries.flow.async_configure(
@@ -60,7 +67,9 @@ async def test_user_step_invalid_auth(hass: HomeAssistant) -> None:
 
 async def test_user_step_cannot_connect(hass: HomeAssistant) -> None:
     """StudyLifeApiError surfaces as a cannot_connect form error."""
-    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
 
     with patch(PATCH_TARGET, side_effect=StudyLifeApiError("boom")):
         result2 = await hass.config_entries.flow.async_configure(
@@ -79,7 +88,9 @@ async def test_user_step_duplicate_url_aborts(
     """Submitting a URL that already has a config entry aborts as already_configured."""
     mock_config_entry.add_to_hass(hass)
 
-    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
 
     with patch(PATCH_TARGET, return_value=None):
         result2 = await hass.config_entries.flow.async_configure(
@@ -103,7 +114,9 @@ def test_normalize_url_prepends_http_for_bare_hostname() -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_reauth_success(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
+async def test_reauth_success(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
     """A successful reauth updates the entry's API key and reloads it."""
     mock_config_entry.add_to_hass(hass)
 
@@ -125,7 +138,9 @@ async def test_reauth_success(hass: HomeAssistant, mock_config_entry: MockConfig
     assert mock_config_entry.data[CONF_URL] == TEST_URL
 
 
-async def test_reauth_invalid_auth(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
+async def test_reauth_invalid_auth(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
     """A rejected key during reauth shows invalid_auth and doesn't touch the entry."""
     mock_config_entry.add_to_hass(hass)
 
@@ -143,7 +158,9 @@ async def test_reauth_invalid_auth(hass: HomeAssistant, mock_config_entry: MockC
     assert mock_config_entry.data[CONF_API_KEY] == TEST_API_KEY
 
 
-async def test_reauth_cannot_connect(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
+async def test_reauth_cannot_connect(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
     """A connection failure during reauth shows cannot_connect and doesn't touch the entry."""
     mock_config_entry.add_to_hass(hass)
 
@@ -249,7 +266,9 @@ async def test_reconfigure_cannot_connect_shows_error(
     assert result2["errors"] == {"base": "cannot_connect"}
 
 
-async def test_reconfigure_url_collision_aborts(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
+async def test_reconfigure_url_collision_aborts(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
     """Pointing the entry at a URL some OTHER entry already owns is rejected."""
     mock_config_entry.add_to_hass(hass)
 

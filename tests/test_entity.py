@@ -7,6 +7,7 @@ self.coordinator, none of which require a running hass or a real
 DataUpdateCoordinator, so a lightweight fake coordinator (just the attributes
 these properties actually touch) is enough.
 """
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -71,7 +72,9 @@ def test_program_entity_unique_id_and_device_info() -> None:
     assert entity.unique_id == f"{entry.entry_id}_program_5_week_hours"
     assert "program_5" in entity.unique_id
     assert entity.device_info is not None
-    assert entity.device_info["identifiers"] == {(DOMAIN, f"{entry.entry_id}_program_5")}
+    assert entity.device_info["identifiers"] == {
+        (DOMAIN, f"{entry.entry_id}_program_5")
+    }
     assert entity.device_info["name"] == "StudyLife — Master's"
     assert entity.device_info["via_device"] == (DOMAIN, entry.entry_id)
 

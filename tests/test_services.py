@@ -8,6 +8,7 @@ doubles (`make_coordinator`/`make_coordinator_data`) - `coordinator.data` only
 needs to duck-type the handful of StudyLifeData attributes services.py
 actually reads (sessions/courses/course_goals/study_programs/settings).
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -99,11 +100,15 @@ async def _register(hass: HomeAssistant) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_create_session_success(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
+async def test_create_session_success(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
     course = make_course(id=100, name="Algorithms", color="#ff0000")
-    coordinator = make_coordinator(client=client, data=make_coordinator_data(courses=[course]))
+    coordinator = make_coordinator(
+        client=client, data=make_coordinator_data(courses=[course])
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
@@ -141,7 +146,9 @@ async def test_create_session_course_name_and_color_are_ignored(
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
     course = make_course(id=100, name="Algorithms", color="#ff0000")
-    coordinator = make_coordinator(client=client, data=make_coordinator_data(courses=[course]))
+    coordinator = make_coordinator(
+        client=client, data=make_coordinator_data(courses=[course])
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
@@ -168,7 +175,9 @@ async def test_create_session_course_not_in_catalog(
 ) -> None:
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
-    coordinator = make_coordinator(client=client, data=make_coordinator_data(courses=[]))
+    coordinator = make_coordinator(
+        client=client, data=make_coordinator_data(courses=[])
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
@@ -203,7 +212,9 @@ async def test_create_session_stale_catalog_400_raises_clean_error(
         100, "POST .../api/sessions returned 400 for courseId 100"
     )
     course = make_course(id=100, name="Algorithms")
-    coordinator = make_coordinator(client=client, data=make_coordinator_data(courses=[course]))
+    coordinator = make_coordinator(
+        client=client, data=make_coordinator_data(courses=[course])
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
@@ -247,7 +258,9 @@ async def test_update_session_partial_update_keeps_other_fields(
         is_completed=False,
         timer_mode_id=1,
     )
-    coordinator = make_coordinator(client=client, data=make_coordinator_data(sessions=[existing]))
+    coordinator = make_coordinator(
+        client=client, data=make_coordinator_data(sessions=[existing])
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
@@ -279,7 +292,9 @@ async def test_update_session_changing_course_resolves_from_catalog(
 ) -> None:
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
-    existing = make_session(id=5, course_id=100, course_name="Algorithms", course_color="#ff0000")
+    existing = make_session(
+        id=5, course_id=100, course_name="Algorithms", course_color="#ff0000"
+    )
     new_course = make_course(id=200, name="Databases", color="#00ff00")
     coordinator = make_coordinator(
         client=client,
@@ -308,7 +323,9 @@ async def test_update_session_changing_course_ignores_supplied_name_and_color(
     must be ignored in favor of the catalog-resolved values (deprecated fields)."""
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
-    existing = make_session(id=5, course_id=100, course_name="Algorithms", course_color="#ff0000")
+    existing = make_session(
+        id=5, course_id=100, course_name="Algorithms", course_color="#ff0000"
+    )
     new_course = make_course(id=200, name="Databases", color="#00ff00")
     coordinator = make_coordinator(
         client=client,
@@ -342,7 +359,9 @@ async def test_update_session_unknown_course_id_raises_without_api_call(
     and never reach the API - the server would reject it with its own 400 anyway."""
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
-    existing = make_session(id=5, course_id=100, course_name="Algorithms", course_color="#ff0000")
+    existing = make_session(
+        id=5, course_id=100, course_name="Algorithms", course_color="#ff0000"
+    )
     coordinator = make_coordinator(
         client=client,
         data=make_coordinator_data(sessions=[existing], courses=[]),
@@ -375,8 +394,12 @@ async def test_update_session_stale_catalog_400_raises_clean_error(
     client.async_update_session.side_effect = StudyLifeApiCourseRejectedError(
         100, "PUT .../api/sessions/5 returned 400 for courseId 100"
     )
-    existing = make_session(id=5, course_id=100, course_name="Algorithms", course_color="#ff0000")
-    coordinator = make_coordinator(client=client, data=make_coordinator_data(sessions=[existing]))
+    existing = make_session(
+        id=5, course_id=100, course_name="Algorithms", course_color="#ff0000"
+    )
+    coordinator = make_coordinator(
+        client=client, data=make_coordinator_data(sessions=[existing])
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
@@ -394,7 +417,9 @@ async def test_update_session_stale_catalog_400_raises_clean_error(
     coordinator.async_request_refresh.assert_awaited_once()
 
 
-async def test_update_session_not_found(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
+async def test_update_session_not_found(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
     mock_config_entry.add_to_hass(hass)
     coordinator = make_coordinator(data=make_coordinator_data(sessions=[]))
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
@@ -417,14 +442,18 @@ async def test_update_session_not_found(hass: HomeAssistant, mock_config_entry: 
 # ---------------------------------------------------------------------------
 
 
-async def test_delete_session_success(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
+async def test_delete_session_success(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
     coordinator = make_coordinator(client=client)
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
-    await hass.services.async_call(DOMAIN, "delete_session", {"session_id": 7}, blocking=True)
+    await hass.services.async_call(
+        DOMAIN, "delete_session", {"session_id": 7}, blocking=True
+    )
 
     client.async_delete_session.assert_awaited_once_with(7)
     coordinator.async_request_refresh.assert_awaited_once()
@@ -495,7 +524,9 @@ async def test_set_course_goal_course_not_in_catalog(
 ) -> None:
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
-    coordinator = make_coordinator(client=client, data=make_coordinator_data(courses=[], course_goals=[]))
+    coordinator = make_coordinator(
+        client=client, data=make_coordinator_data(courses=[], course_goals=[])
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
@@ -520,7 +551,9 @@ async def test_set_course_goal_stale_catalog_400_raises_clean_error(
         100, "PUT .../api/coursegoals/100 returned 400 for courseId 100"
     )
     course = make_course(id=100, name="Algorithms")
-    coordinator = make_coordinator(client=client, data=make_coordinator_data(courses=[course]))
+    coordinator = make_coordinator(
+        client=client, data=make_coordinator_data(courses=[course])
+    )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
@@ -548,7 +581,8 @@ async def test_set_course_goal_course_not_in_catalog_even_with_existing_goal(
     client = AsyncMock()
     existing_goal = {"courseId": 999, "courseName": "Stale Course", "grade": 2.0}
     coordinator = make_coordinator(
-        client=client, data=make_coordinator_data(courses=[], course_goals=[existing_goal])
+        client=client,
+        data=make_coordinator_data(courses=[], course_goals=[existing_goal]),
     )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
@@ -568,7 +602,9 @@ async def test_set_course_goal_course_not_in_catalog_even_with_existing_goal(
 # ---------------------------------------------------------------------------
 
 
-async def test_generate_exam_plan_success(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
+async def test_generate_exam_plan_success(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
     coordinator = make_coordinator(client=client)
@@ -629,20 +665,25 @@ async def test_generate_exam_plan_stale_catalog_400_raises_clean_error(
 # ---------------------------------------------------------------------------
 
 
-async def test_set_active_program_success(hass: HomeAssistant, mock_config_entry: MockConfigEntry) -> None:
+async def test_set_active_program_success(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
     program = StudyProgram(id=42, name="Custom", is_built_in=False, is_completed=False)
     coordinator = make_coordinator(
         client=client,
         data=make_coordinator_data(
-            study_programs=[program], settings={"activeStudyProgramId": None, "foo": "bar"}
+            study_programs=[program],
+            settings={"activeStudyProgramId": None, "foo": "bar"},
         ),
     )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
-    await hass.services.async_call(DOMAIN, "set_active_program", {"program_id": 42}, blocking=True)
+    await hass.services.async_call(
+        DOMAIN, "set_active_program", {"program_id": 42}, blocking=True
+    )
 
     client.async_update_settings.assert_awaited_once()
     payload = client.async_update_settings.call_args.args[0]
@@ -656,10 +697,14 @@ async def test_set_active_program_omitted_switches_to_builtin(
 ) -> None:
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
-    builtin = StudyProgram(id=None, name="StudyLife", is_built_in=True, is_completed=False)
+    builtin = StudyProgram(
+        id=None, name="StudyLife", is_built_in=True, is_completed=False
+    )
     coordinator = make_coordinator(
         client=client,
-        data=make_coordinator_data(study_programs=[builtin], settings={"activeStudyProgramId": 5}),
+        data=make_coordinator_data(
+            study_programs=[builtin], settings={"activeStudyProgramId": 5}
+        ),
     )
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
@@ -702,42 +747,56 @@ async def test_resolve_coordinator_single_entry_no_device_id(
     hass.data[DOMAIN] = {mock_config_entry.entry_id: coordinator}
     await _register(hass)
 
-    await hass.services.async_call(DOMAIN, "delete_session", {"session_id": 1}, blocking=True)
+    await hass.services.async_call(
+        DOMAIN, "delete_session", {"session_id": 1}, blocking=True
+    )
 
     client.async_delete_session.assert_awaited_once_with(1)
     coordinator.async_request_refresh.assert_awaited_once()
 
 
-async def test_resolve_coordinator_multiple_entries_no_device_id(hass: HomeAssistant) -> None:
+async def test_resolve_coordinator_multiple_entries_no_device_id(
+    hass: HomeAssistant,
+) -> None:
     coordinator1 = make_coordinator()
     coordinator2 = make_coordinator()
     hass.data[DOMAIN] = {"entry1": coordinator1, "entry2": coordinator2}
     await _register(hass)
 
     with pytest.raises(HomeAssistantError) as exc_info:
-        await hass.services.async_call(DOMAIN, "delete_session", {"session_id": 1}, blocking=True)
+        await hass.services.async_call(
+            DOMAIN, "delete_session", {"session_id": 1}, blocking=True
+        )
 
     assert exc_info.value.translation_key == "multiple_servers_need_device_id"
     coordinator1.async_request_refresh.assert_not_awaited()
     coordinator2.async_request_refresh.assert_not_awaited()
 
 
-async def test_resolve_coordinator_no_integration_configured_empty_dict(hass: HomeAssistant) -> None:
+async def test_resolve_coordinator_no_integration_configured_empty_dict(
+    hass: HomeAssistant,
+) -> None:
     hass.data[DOMAIN] = {}
     await _register(hass)
 
     with pytest.raises(HomeAssistantError) as exc_info:
-        await hass.services.async_call(DOMAIN, "delete_session", {"session_id": 1}, blocking=True)
+        await hass.services.async_call(
+            DOMAIN, "delete_session", {"session_id": 1}, blocking=True
+        )
 
     assert exc_info.value.translation_key == "no_integration_configured"
 
 
-async def test_resolve_coordinator_no_integration_configured_missing_key(hass: HomeAssistant) -> None:
+async def test_resolve_coordinator_no_integration_configured_missing_key(
+    hass: HomeAssistant,
+) -> None:
     hass.data.pop(DOMAIN, None)
     await _register(hass)
 
     with pytest.raises(HomeAssistantError) as exc_info:
-        await hass.services.async_call(DOMAIN, "delete_session", {"session_id": 1}, blocking=True)
+        await hass.services.async_call(
+            DOMAIN, "delete_session", {"session_id": 1}, blocking=True
+        )
 
     assert exc_info.value.translation_key == "no_integration_configured"
 
