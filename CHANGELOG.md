@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/lukislp/studylife-hacs/compare/v1.6.0...v1.6.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* **deps:** bump pytest-homeassistant-custom-component ([#37](https://github.com/lukislp/studylife-hacs/issues/37)) ([3b9da14](https://github.com/lukislp/studylife-hacs/commit/3b9da1480efc25df99addc8c42a54ae18f6e21b9))
+
 # [1.6.0](https://github.com/lukislp/studylife-hacs/compare/v1.5.6...v1.6.0) (2026-09-13)
 
 
