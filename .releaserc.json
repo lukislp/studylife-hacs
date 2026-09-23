@@ -1,19 +1,16 @@
 {
-    "branches":  [
-                     "main"
-                 ],
-    "plugins":  [
-                    "@semantic-release/commit-analyzer",
-                    "@semantic-release/release-notes-generator",
-                    {
-                        "value":  [
-                                      "@semantic-release/exec",
-                                      {
-                                          "prepareCmd":  "python3 scripts/sync_manifest_version.py ${nextRelease.version}"
-                                      }
-                                  ],
-                        "Count":  2
-                    },
-                    "@semantic-release/github"
-                ]
+  "branches": [
+    "main"
+  ],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "python3 scripts/sync_manifest_version.py ${nextRelease.version}"
+      }
+    ],
+    "@semantic-release/github"
+  ]
 }
