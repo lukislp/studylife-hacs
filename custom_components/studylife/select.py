@@ -34,8 +34,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN
+from .const import CONF_ENTRY_TYPE, DOMAIN, ENTRY_TYPE_DISPLAY
 from .coordinator import StudyLifeCoordinator, StudyLifeData
+from .display_select import async_setup_display_select_entry
 from .entity import StudyLifeEntity
 
 
@@ -53,6 +54,9 @@ def _active_courses(data: StudyLifeData) -> list[dict[str, Any]]:
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
+    if entry.data.get(CONF_ENTRY_TYPE) == ENTRY_TYPE_DISPLAY:
+        await async_setup_display_select_entry(hass, entry, async_add_entities)
+        return
     coordinator: StudyLifeCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([StudyLifeActiveCourseSelect(coordinator, entry)])
 

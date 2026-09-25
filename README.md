@@ -16,6 +16,7 @@ integration doesn't change anything in the StudyLife app.
 - **Six services** to create/edit/delete sessions and course goals, generate an exam plan, and switch the active study programme — directly from Home Assistant automations
 - **Calendars and a course picker** for sessions and open course goals, plus a `select` entity for the active course
 - **Long-lived API key auth** (one-time setup, no rotation/expiry) and conditional-GET polling (ETags) so unchanged data costs no bandwidth
+- **Optional [studylife-display](#studylife-display-optional) support** — see and switch what's shown on any number of e-paper panels, each its own device
 
 **Multiple study programmes — one device per programme:** Every study programme (the built-in one plus every custom one you've created, completed or not) gets its **own device** in Home Assistant, `StudyLife — <name>`, with a full set of progress sensors — **all visible at the same time**, regardless of which programme is currently active in the app. On top of that there's a "hub" device `StudyLife` for everything app-global (sessions, timer, notes, calendar, course picker, cross-programme study habit). See [Entities](#entities) for details.
 
@@ -32,9 +33,43 @@ integration doesn't change anything in the StudyLife app.
 
 1. Copy the `custom_components/studylife` folder into the `config/custom_components/` directory of your Home Assistant instance (end result: `config/custom_components/studylife/manifest.json`).
 2. Restart Home Assistant.
-3. **Settings → Devices & Services → Add Integration → "StudyLife"** and enter the base URL of the StudyLife server (e.g. `http://studylife.local:8080`). You'll also need to enter the API key once: generate a key on the **StudyLife app's setup page** (the "Home Assistant" card) and copy the value shown — it's displayed only once. The key is long-lived — it never rotates and never expires, so this really is a one-time step (see [API key](#api-key) below).
+3. **Settings → Devices & Services → Add Integration → "StudyLife"** — a menu asks what to add: a **StudyLife account** (a server) or a **studylife-display panel** (see [studylife-display](#studylife-display-optional) below). For an account: enter the base URL of the StudyLife server (e.g. `http://studylife.local:8080`) and the API key. Generate the key once on the **StudyLife app's setup page** (the "Home Assistant" card) and copy the value shown — it's displayed only once. The key is long-lived — it never rotates and never expires, so this really is a one-time step (see [API key](#api-key) below).
 
 The poll interval (default 30s, same as the client's `AppStateService`) can be adjusted via **Configure** on the integration tile. On endpoints with server-side caching (`/api/sessions`, `/api/sessions/history`, `/api/settings`, `/api/courses`), the integration polls using conditional GET (`If-None-Match` against the server's ETags) — unchanged data is answered with an empty `304 Not Modified` instead of being retransmitted in full every time.
+
+## studylife-display (optional)
+
+An optional second kind of entry connects Home Assistant directly to one or more
+[studylife-display](https://github.com/lukislp/studylife-display) e-paper panels on the
+LAN — a completely separate service from the StudyLife server, talking to the display's
+own bearer-token JSON API (`DISPLAY_API_TOKEN`, off by default there too) rather than
+StudyLife's `X-Api-Key`. **Any number of displays can be added, each becomes its own
+device** — run **Add Integration → "StudyLife" → "studylife-display panel"** again for a
+second, third, ... panel.
+
+Setup:
+
+1. On the display's Pi, set `DISPLAY_API_TOKEN` in `/etc/studylife-display.env` (at least
+   12 characters) and restart `studylife-display-web.service` — see that project's README,
+   "JSON API" section. This is a separate, optional token from the one the display's own
+   web login uses.
+2. **Settings → Devices & Services → Add Integration → "StudyLife" → "studylife-display
+   panel"**, enter the display's web interface URL (e.g.
+   `http://studylife-display.local:8795`) and the token. Turn off "Verify SSL certificate"
+   only if the display serves https with a self-signed certificate (`DISPLAY_TLS=true`
+   without a trusted certificate).
+
+Each display device carries three entities:
+
+| Entity | Type | Meaning |
+|---|---|---|
+| `select.<display>_layout` | Select | The layout choice - `auto` plus every key the display's `GET /api/layouts` lists (`classic`, `focus`, `exam`, `week`, `semester`, `agenda`, `courses`, `milestone`, `review`). Picking one calls `POST /api/layout`, which both saves the choice and triggers an immediate full panel refresh on the display, exactly like its own web interface's "Apply" button. |
+| `sensor.<display>_current_layout` | Sensor | What is **actually** on the panel right now - the current frame's layout, or its kind (`error`/`setup`) when it isn't a dashboard at all. Attributes: `status` (`ok`/`degraded`/`error`/`setup`), `layout_choice`, `resolved_layout` (what `auto` currently resolves to), `current_frame_kind`, `shown_at`, `version`, `stale_minutes`, `quiet_hours_active`, `sessions_ok`, `last_error`. |
+| `camera.<display>_current_frame` | Camera | The exact PNG currently on the panel (`GET /api/current.png`), fetched fresh on demand - the same image the display's own web interface shows under "Currently on the panel". |
+
+Poll interval defaults to 60s (studylife-display's own scheduled refresh is every 5
+minutes; polling faster would only re-read the same cached state) and is adjustable the
+same way as an account entry's, via **Configure**.
 
 ## Entities
 

@@ -2,6 +2,14 @@
   "config": {
     "step": {
       "user": {
+        "title": "Add StudyLife",
+        "description": "What do you want to add?",
+        "menu_options": {
+          "account": "StudyLife account (server)",
+          "display": "studylife-display panel"
+        }
+      },
+      "account": {
         "title": "Connect to StudyLife",
         "description": "Base URL of your self-hosted StudyLife server, e.g. {example}. The server protects its API with personal API keys — generate one on the StudyLife app's Setup page (\"Home Assistant\" card) and paste it here.",
         "data": {
@@ -32,14 +40,43 @@
         "data_description": {
           "api_key": "If only the server address changed, the existing key usually still works. If you do need a new one: generate it on the StudyLife app's Setup page (\"Home Assistant\" card) and copy the value it shows."
         }
+      },
+      "display": {
+        "title": "Add a studylife-display panel",
+        "description": "URL of the studylife-display web interface on your LAN, e.g. {example}. Requires DISPLAY_API_TOKEN to be set on that display (see its README, \"JSON API\" section) — a separate token from the one its own web login uses.",
+        "data": {
+          "url": "URL",
+          "api_token": "API token",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "api_token": "The value of DISPLAY_API_TOKEN in the display's /etc/studylife-display.env.",
+          "verify_ssl": "Turn off only if the display serves https with a self-signed certificate (DISPLAY_TLS=true without a trusted certificate)."
+        }
+      },
+      "display_reauth_confirm": {
+        "title": "Re-pair studylife-display",
+        "description": "The stored API token is no longer accepted by this display — DISPLAY_API_TOKEN was changed, or its JSON API was turned off. Paste the current value here.",
+        "data": {
+          "api_token": "API token"
+        }
+      },
+      "display_reconfigure_confirm": {
+        "title": "Reconfigure studylife-display",
+        "description": "Update the URL, token and/or SSL setting for this display — e.g. if it moved to a new host/port.",
+        "data": {
+          "url": "URL",
+          "api_token": "API token",
+          "verify_ssl": "Verify SSL certificate"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect. Check the URL and make sure the server is reachable.",
-      "invalid_auth": "The API key was rejected. Generate a new key on the StudyLife app's Setup page and use that value."
+      "cannot_connect": "Failed to connect. Check the URL and make sure the server/display is reachable.",
+      "invalid_auth": "The credential was rejected. For a StudyLife account: generate a new key on the app's Setup page. For a display: check DISPLAY_API_TOKEN there matches what you entered — a 404 there also means the display's JSON API is off."
     },
     "abort": {
-      "already_configured": "This StudyLife server is already configured.",
+      "already_configured": "This StudyLife server or display is already configured.",
       "reauth_successful": "Re-pairing successful.",
       "reconfigure_successful": "Reconfigured."
     }
@@ -84,7 +121,8 @@
       "study_forecast": { "name": "Study forecast" },
       "month_comparison": { "name": "Month comparison" },
       "weekly_report": { "name": "Weekly report" },
-      "active_program": { "name": "Active study programme" }
+      "active_program": { "name": "Active study programme" },
+      "display_current_layout": { "name": "Current layout" }
     },
     "binary_sensor": {
       "studying_now": { "name": "Studying now" },
@@ -100,7 +138,11 @@
       "goals": { "name": "Course goals" }
     },
     "select": {
-      "active_course": { "name": "Active course" }
+      "active_course": { "name": "Active course" },
+      "display_layout": { "name": "Layout" }
+    },
+    "camera": {
+      "current_frame": { "name": "Current frame" }
     }
   },
   "services": {
