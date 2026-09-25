@@ -2,6 +2,14 @@
   "config": {
     "step": {
       "user": {
+        "title": "StudyLife hinzufügen",
+        "description": "Was soll hinzugefügt werden?",
+        "menu_options": {
+          "account": "StudyLife-Konto (Server)",
+          "display": "studylife-display-Panel"
+        }
+      },
+      "account": {
         "title": "StudyLife verbinden",
         "description": "Basis-URL des selbst gehosteten StudyLife-Servers, z. B. {example}. Der Server schützt seine API mit persönlichen API-Keys — den Key auf der Setup-Seite der StudyLife-App generieren (Karte „Home Assistant“) und hier einfügen.",
         "data": {
@@ -32,14 +40,43 @@
         "data_description": {
           "api_key": "Bei geänderter Server-Adresse reicht meist der bestehende Key. Wird ein neuer benötigt: auf der Setup-Seite der StudyLife-App generieren (Karte „Home Assistant“) und den angezeigten Wert kopieren."
         }
+      },
+      "display": {
+        "title": "studylife-display-Panel hinzufügen",
+        "description": "URL des studylife-display-Webinterfaces im LAN, z. B. {example}. Setzt voraus, dass auf diesem Display DISPLAY_API_TOKEN gesetzt ist (siehe dessen README, Abschnitt „JSON API“) — ein eigenes Token, getrennt vom Token des Web-Logins.",
+        "data": {
+          "url": "URL",
+          "api_token": "API-Token",
+          "verify_ssl": "SSL-Zertifikat prüfen"
+        },
+        "data_description": {
+          "api_token": "Der Wert von DISPLAY_API_TOKEN in /etc/studylife-display.env auf dem Display.",
+          "verify_ssl": "Nur ausschalten, wenn das Display https mit einem selbstsignierten Zertifikat ausliefert (DISPLAY_TLS=true ohne vertrauenswürdiges Zertifikat)."
+        }
+      },
+      "display_reauth_confirm": {
+        "title": "studylife-display neu koppeln",
+        "description": "Das gespeicherte API-Token wird von diesem Display nicht mehr akzeptiert — DISPLAY_API_TOKEN wurde geändert oder die JSON-API wurde ausgeschaltet. Den aktuellen Wert hier einfügen.",
+        "data": {
+          "api_token": "API-Token"
+        }
+      },
+      "display_reconfigure_confirm": {
+        "title": "studylife-display neu konfigurieren",
+        "description": "URL, Token und/oder SSL-Einstellung dieses Displays anpassen — z. B. wenn es auf einen neuen Host/Port umgezogen ist.",
+        "data": {
+          "url": "URL",
+          "api_token": "API-Token",
+          "verify_ssl": "SSL-Zertifikat prüfen"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Verbindung fehlgeschlagen. URL prüfen und sicherstellen, dass der Server erreichbar ist.",
-      "invalid_auth": "Der API-Key wurde abgelehnt. Auf der Setup-Seite der StudyLife-App einen neuen Key generieren und dessen Wert verwenden."
+      "cannot_connect": "Verbindung fehlgeschlagen. URL prüfen und sicherstellen, dass Server/Display erreichbar ist.",
+      "invalid_auth": "Die Zugangsdaten wurden abgelehnt. Bei einem StudyLife-Konto: auf der Setup-Seite der App einen neuen Key generieren. Bei einem Display: DISPLAY_API_TOKEN dort mit dem hier eingegebenen Wert abgleichen — ein 404 dort bedeutet auch, dass die JSON-API des Displays ausgeschaltet ist."
     },
     "abort": {
-      "already_configured": "Dieser StudyLife-Server ist bereits eingerichtet.",
+      "already_configured": "Dieser StudyLife-Server oder dieses Display ist bereits eingerichtet.",
       "reauth_successful": "Neu-Kopplung erfolgreich.",
       "reconfigure_successful": "Neu konfiguriert."
     }
@@ -84,7 +121,8 @@
       "study_forecast": { "name": "Lernprognose" },
       "month_comparison": { "name": "Monatsvergleich" },
       "weekly_report": { "name": "Wochenbericht" },
-      "active_program": { "name": "Aktiver Studiengang" }
+      "active_program": { "name": "Aktiver Studiengang" },
+      "display_current_layout": { "name": "Aktuelles Layout" }
     },
     "binary_sensor": {
       "studying_now": { "name": "Lernt gerade" },
@@ -100,7 +138,11 @@
       "goals": { "name": "Kursziele" }
     },
     "select": {
-      "active_course": { "name": "Aktiver Kurs" }
+      "active_course": { "name": "Aktiver Kurs" },
+      "display_layout": { "name": "Layout" }
+    },
+    "camera": {
+      "current_frame": { "name": "Aktuelles Bild" }
     }
   },
   "services": {

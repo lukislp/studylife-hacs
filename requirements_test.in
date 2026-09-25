@@ -3,3 +3,10 @@ pytest-asyncio
 aioresponses
 freezegun
 pytest-cov
+# homeassistant.components.camera imports this unconditionally at module load
+# (img_util.py) - not pulled in by pytest-homeassistant-custom-component itself,
+# so any test that imports homeassistant.components.camera (see tests/test_camera.py)
+# fails to collect without it. Only the pure-Python wheel is needed for import to
+# succeed; the native libjpeg-turbo library is used lazily, only for snapshot
+# scaling, which these tests never exercise.
+PyTurboJPEG

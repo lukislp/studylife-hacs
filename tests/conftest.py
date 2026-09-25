@@ -7,17 +7,24 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from homeassistant.const import CONF_API_KEY, CONF_URL
+from homeassistant.const import CONF_API_KEY, CONF_API_TOKEN, CONF_URL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.studylife.const import DOMAIN
+from custom_components.studylife.const import (
+    CONF_ENTRY_TYPE,
+    DOMAIN,
+    ENTRY_TYPE_DISPLAY,
+)
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
 TEST_URL = "http://studylife.local:5000"
 TEST_API_KEY = "test-api-key"
+
+TEST_DISPLAY_URL = "http://studylife-display.local:8795"
+TEST_DISPLAY_TOKEN = "test-display-token"
 
 
 @pytest.fixture(autouse=True)
@@ -312,6 +319,138 @@ def make_raw_study_program(
         "isBuiltIn": is_built_in,
         "isCompleted": is_completed,
     }
+
+
+@pytest.fixture
+def mock_display_config_entry() -> MockConfigEntry:
+    """A single studylife-display config entry, not yet added to hass."""
+    return MockConfigEntry(
+        domain=DOMAIN,
+        title="StudyLife Display (studylife-display.local:8795)",
+        data={
+            CONF_URL: TEST_DISPLAY_URL,
+            CONF_API_TOKEN: TEST_DISPLAY_TOKEN,
+            CONF_VERIFY_SSL: True,
+            CONF_ENTRY_TYPE: ENTRY_TYPE_DISPLAY,
+        },
+        unique_id=TEST_DISPLAY_URL,
+    )
+
+
+_UNSET: Any = object()
+
+
+def make_raw_display_state(
+    *,
+    status: str = "ok",
+    setup: bool = False,
+    version: str = "1.10.0",
+    stale_minutes: int | None = 2,
+    quiet_hours_active: bool = False,
+    sessions_ok: bool = True,
+    last_error: dict[str, Any] | None = None,
+    layout_choice: str = "auto",
+    layout: str | None = "focus",
+    current_frame: dict[str, Any] | None = _UNSET,
+) -> dict[str, Any]:
+    """Build a raw GET /api/state response, as display_coordinator.py's
+    _parse_display_data expects to consume it - matches studylife-display's api.py
+    (`_state`, layered on `health_report`) exactly. `current_frame` defaults to a
+    matching dashboard frame; pass `current_frame=None` explicitly for "nothing shown
+    on the panel yet" (current_frame is JSON null) - distinct from just not passing it."""
+    return {
+        "status": status,
+        "setup": setup,
+        "version": version,
+        "last_fetch_at": "2026-09-25T20:30:34.711983+02:00",
+        "last_fetch_ok": True,
+        "stale_minutes": stale_minutes,
+        "last_error": last_error,
+        "last_panel_update_at": "2026-09-25T20:30:34.711983+02:00",
+        "layout": layout,
+        "quiet_hours_active": quiet_hours_active,
+        "sessions_ok": sessions_ok,
+        "layout_choice": layout_choice,
+        "current_frame": (
+            current_frame
+            if current_frame is not _UNSET
+            else {
+                "shown_at": "2026-09-25T20:30:34.711983+02:00",
+                "layout": layout,
+                "kind": "dashboard",
+            }
+        ),
+    }
+
+
+def make_raw_display_layout_option(
+    *, key: str = "focus", name_de: str = "Fokus", name_en: str = "Focus"
+) -> dict[str, Any]:
+    return {
+        "key": key,
+        "name": {"de": name_de, "en": name_en},
+        "description": {
+            "de": f"{name_de}-Beschreibung",
+            "en": f"{name_en} description",
+        },
+    }
+
+
+def make_raw_display_layouts(
+    *,
+    choice: str = "auto",
+    resolved: str = "focus",
+    options: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Build a raw GET /api/layouts response, as display_coordinator.py's
+    _parse_display_data expects to consume it."""
+    return {
+        "choice": choice,
+        "resolved": resolved,
+        "options": options
+        if options is not None
+        else [
+            make_raw_display_layout_option(
+                key="classic", name_de="Klassisch", name_en="Classic"
+            ),
+            make_raw_display_layout_option(
+                key="focus", name_de="Fokus", name_en="Focus"
+            ),
+            make_raw_display_layout_option(
+                key="exam", name_de="Prüfung", name_en="Exam"
+            ),
+        ],
+    }
+
+
+@pytest.fixture
+def mock_display_api_client() -> AsyncMock:
+    """An AsyncMock standing in for DisplayApiClient, pre-wired with valid default
+    responses for the coordinator's poll (state + layouts)."""
+    client = AsyncMock()
+    client.base_url = TEST_DISPLAY_URL
+    client.token = TEST_DISPLAY_TOKEN
+    client.verify_ssl = True
+    client.async_get_state.return_value = make_raw_display_state()
+    client.async_get_layouts.return_value = make_raw_display_layouts()
+    client.async_get_current_png.return_value = b"\x89PNG-fake-bytes"
+    return client
+
+
+async def setup_display_integration(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+):
+    """Like setup_integration, but for a studylife-display config entry."""
+    mock_display_config_entry.add_to_hass(hass)
+    with patch(
+        "custom_components.studylife.DisplayApiClient",
+        return_value=mock_display_api_client,
+    ):
+        assert await hass.config_entries.async_setup(mock_display_config_entry.entry_id)
+        await hass.async_block_till_done()
+    return hass.data[DOMAIN][mock_display_config_entry.entry_id]
 
 
 async def setup_integration(
