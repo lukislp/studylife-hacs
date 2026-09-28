@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   ci:
-    uses: lukislp/ci-workflows/.github/workflows/hacs-ci.yml@a5f01cccfa7a63023b5a2f67993f771d856c0ee4 # v1.7.1
+    uses: lukislp/ci-workflows/.github/workflows/hacs-ci.yml@962d016c5e3ee498913a8492898dd5e238ccbfb1 # v1.7.9
     # The called workflow narrows these per job (the test jobs run with contents: read).
     permissions:
       contents: write
