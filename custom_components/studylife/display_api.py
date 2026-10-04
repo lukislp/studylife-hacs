@@ -29,6 +29,13 @@ class DisplayApiAuthError(DisplayApiError):
     the connection as configured, so the coordinator triggers reauth for either."""
 
 
+class DisplayApiNotFoundError(DisplayApiAuthError):
+    """A 404 specifically. Still an auth error for every route that must exist (a 404
+    on /api/state means the API is off), but lets a caller probing an OPTIONAL route -
+    /api/settings, missing on displays older than 1.11 - tell "route unknown" apart
+    from a rejected token."""
+
+
 async def _error_message(response: aiohttp.ClientResponse) -> str:
     """The display's `{"error": "..."}` reason for a 400, or a generic fallback when
     the body isn't the expected JSON."""
@@ -93,7 +100,7 @@ class DisplayApiClient:
                 )
                 if response.status == 404:
                     response.release()
-                    raise DisplayApiAuthError(
+                    raise DisplayApiNotFoundError(
                         f"{method} {url} returned 404 - the display's JSON API is off "
                         "(DISPLAY_API_TOKEN not set there) or this studylife-display "
                         "version predates it"
@@ -142,7 +149,25 @@ class DisplayApiClient:
             body["duo"] = duo
         return await self._request("POST", "/api/layout", json=body)
 
+    async def async_get_settings(self) -> dict[str, Any]:
+        """GET /api/settings (studylife-display >= 1.11) - `values`, `sources` and
+        `readonly`. Older displays answer 404 (DisplayApiNotFoundError)."""
+        return await self._request("GET", "/api/settings")
+
+    async def async_update_settings(self, changes: dict[str, Any]) -> dict[str, Any]:
+        """POST /api/settings with any subset of the settings keys. An explicit None
+        removes that override (back to the environment value); an invalid value is a
+        400 that surfaces as DisplayApiError with the display's reason, nothing being
+        written. Returns the new settings document."""
+        return await self._request("POST", "/api/settings", json=changes)
+
+    async def async_reset_settings(self) -> dict[str, Any]:
+        """POST /api/settings/reset - drops every override except the layout choice."""
+        return await self._request("POST", "/api/settings/reset")
+
     async def async_refresh(self) -> dict[str, Any]:
+        """POST /api/refresh - redraws the panel now; `outcome` is "refreshed" or
+        "failed"."""
         return await self._request("POST", "/api/refresh")
 
     async def async_get_current_png(self) -> bytes | None:

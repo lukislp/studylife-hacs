@@ -10,7 +10,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.studylife.display_api import DisplayApiAuthError, DisplayApiError
+from custom_components.studylife.display_api import (
+    DisplayApiAuthError,
+    DisplayApiError,
+    DisplayApiNotFoundError,
+)
 from custom_components.studylife.display_coordinator import (
     FALLBACK_PSEUDO_OPTIONS,
     DisplayCoordinator,
@@ -19,6 +23,7 @@ from custom_components.studylife.display_coordinator import (
 from .conftest import (
     make_raw_display_layouts,
     make_raw_display_layouts_legacy,
+    make_raw_display_settings,
     make_raw_display_state,
 )
 
@@ -147,5 +152,60 @@ async def test_layouts_fetch_failure_also_raises_update_failed(
     coordinator: DisplayCoordinator, mock_display_api_client: AsyncMock
 ) -> None:
     mock_display_api_client.async_get_layouts.side_effect = DisplayApiError("boom")
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
+
+
+async def test_parses_settings_values_and_sources(
+    coordinator: DisplayCoordinator, mock_display_api_client: AsyncMock
+) -> None:
+    mock_display_api_client.async_get_settings.return_value = make_raw_display_settings(
+        language="en", sources={"language": True, "rotation": False}
+    )
+    data = await coordinator._async_update_data()
+
+    assert data.settings["language"] == "en"
+    assert data.settings["rotation"] == 0
+    assert data.settings["update_check"] is True
+    assert data.settings_sources["language"] is True
+    assert data.settings_sources["rotation"] is False
+
+
+async def test_settings_route_404_gives_empty_settings_not_a_failure(
+    coordinator: DisplayCoordinator, mock_display_api_client: AsyncMock
+) -> None:
+    """A display before 1.11 has no /api/settings - it keeps working without them."""
+    mock_display_api_client.async_get_settings.side_effect = DisplayApiNotFoundError(
+        "404"
+    )
+    data = await coordinator._async_update_data()
+
+    assert data.settings == {}
+    assert data.settings_sources == {}
+    assert data.status == "ok"
+
+
+async def test_malformed_settings_document_gives_empty_settings(
+    coordinator: DisplayCoordinator, mock_display_api_client: AsyncMock
+) -> None:
+    mock_display_api_client.async_get_settings.return_value = {"values": None}
+    data = await coordinator._async_update_data()
+
+    assert data.settings == {}
+    assert data.settings_sources == {}
+
+
+async def test_settings_auth_error_other_than_404_still_raises(
+    coordinator: DisplayCoordinator, mock_display_api_client: AsyncMock
+) -> None:
+    mock_display_api_client.async_get_settings.side_effect = DisplayApiAuthError("401")
+    with pytest.raises(ConfigEntryAuthFailed):
+        await coordinator._async_update_data()
+
+
+async def test_settings_fetch_failure_raises_update_failed(
+    coordinator: DisplayCoordinator, mock_display_api_client: AsyncMock
+) -> None:
+    mock_display_api_client.async_get_settings.side_effect = DisplayApiError("boom")
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()

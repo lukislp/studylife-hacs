@@ -18,6 +18,7 @@ from custom_components.studylife.display_api import (
     DisplayApiAuthError,
     DisplayApiClient,
     DisplayApiError,
+    DisplayApiNotFoundError,
 )
 
 BASE_URL = "http://display.test:8795"
@@ -208,3 +209,60 @@ async def test_test_connection_bad_token_raises(client: DisplayApiClient) -> Non
         m.get(f"{BASE_URL}/api/state", status=401)
         with pytest.raises(DisplayApiAuthError):
             await client.async_test_connection()
+
+
+async def test_get_settings(client: DisplayApiClient) -> None:
+    doc = {"values": {"language": "de"}, "sources": {"language": True}, "readonly": {}}
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/settings", payload=doc)
+        assert await client.async_get_settings() == doc
+
+
+async def test_get_settings_404_is_a_not_found_auth_error(
+    client: DisplayApiClient,
+) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/settings", status=404)
+        with pytest.raises(DisplayApiNotFoundError):
+            await client.async_get_settings()
+    # Still an auth error for callers that treat every 404 that way.
+    assert issubclass(DisplayApiNotFoundError, DisplayApiAuthError)
+
+
+async def test_update_settings_posts_the_changes(client: DisplayApiClient) -> None:
+    with aioresponses() as m:
+        m.post(f"{BASE_URL}/api/settings", payload={"values": {"rotation": 180}})
+        result = await client.async_update_settings({"rotation": 180, "clear_at": None})
+        calls = _calls(m, "POST", f"{BASE_URL}/api/settings")
+
+    assert result == {"values": {"rotation": 180}}
+    assert calls[0].kwargs["json"] == {"rotation": 180, "clear_at": None}
+    assert calls[0].kwargs["headers"] == {"Authorization": f"Bearer {TOKEN}"}
+
+
+async def test_update_settings_400_carries_the_displays_reason(
+    client: DisplayApiClient,
+) -> None:
+    with aioresponses() as m:
+        m.post(
+            f"{BASE_URL}/api/settings",
+            status=400,
+            payload={"error": "quiet_hours: not a window"},
+        )
+        with pytest.raises(DisplayApiError, match="not a window"):
+            await client.async_update_settings({"quiet_hours": "x"})
+
+
+async def test_reset_settings_posts_to_the_reset_route(
+    client: DisplayApiClient,
+) -> None:
+    with aioresponses() as m:
+        m.post(f"{BASE_URL}/api/settings/reset", payload={"values": {}})
+        assert await client.async_reset_settings() == {"values": {}}
+        assert len(_calls(m, "POST", f"{BASE_URL}/api/settings/reset")) == 1
+
+
+async def test_refresh_posts_and_returns_the_outcome(client: DisplayApiClient) -> None:
+    with aioresponses() as m:
+        m.post(f"{BASE_URL}/api/refresh", payload={"outcome": "refreshed"})
+        assert await client.async_refresh() == {"outcome": "refreshed"}
