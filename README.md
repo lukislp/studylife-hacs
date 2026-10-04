@@ -59,13 +59,29 @@ Setup:
    only if the display serves https with a self-signed certificate (`DISPLAY_TLS=true`
    without a trusted certificate).
 
-Each display device carries three entities:
+Each display device carries three primary entities plus a **Diagnostic** group:
 
 | Entity | Type | Meaning |
 |---|---|---|
 | `select.<display>_layout` | Select | The layout choice - `auto` plus every key the display's `GET /api/layouts` lists (`classic`, `focus`, `exam`, `week`, `semester`, `agenda`, `courses`, `milestone`, `review`). Picking one calls `POST /api/layout`, which both saves the choice and triggers an immediate full panel refresh on the display, exactly like its own web interface's "Apply" button. |
-| `sensor.<display>_current_layout` | Sensor | What is **actually** on the panel right now - the current frame's layout, or its kind (`error`/`setup`) when it isn't a dashboard at all. Attributes: `status` (`ok`/`degraded`/`error`/`setup`), `layout_choice`, `resolved_layout` (what `auto` currently resolves to), `current_frame_kind`, `shown_at`, `version`, `stale_minutes`, `quiet_hours_active`, `sessions_ok`, `last_error`. |
+| `sensor.<display>_current_layout` | Sensor | What is **actually** on the panel right now - the current frame's layout, or its kind (`error`/`setup`) when it isn't a dashboard at all. |
 | `camera.<display>_current_frame` | Camera | The exact PNG currently on the panel (`GET /api/current.png`), fetched fresh on demand - the same image the display's own web interface shows under "Currently on the panel". |
+
+The health fields `GET /api/state` reports alongside the frame are each their own
+entity under the device's **Diagnostic** group (they used to be attributes of
+`current_layout`), so they can be graphed and used as automation triggers individually:
+
+| Entity | Type | Meaning |
+|---|---|---|
+| `sensor.<display>_status` | Enum | The display's own health verdict: `ok`, `degraded` (last fetch failed but a cached dashboard is shown, or the data is older than 15 min outside quiet hours), `error` (API key rejected or no data at all), `setup` (no API key configured yet). |
+| `sensor.<display>_resolved_layout` | Sensor | What `auto` currently resolves to. |
+| `sensor.<display>_frame_kind` | Enum | What kind of frame is on the panel: `dashboard`, `error` or `setup`. |
+| `sensor.<display>_shown_at` | Timestamp | When the current frame was drawn. |
+| `sensor.<display>_stale_minutes` | Duration (min) | Age of the StudyLife data the panel shows. |
+| `sensor.<display>_last_error` | Enum | Kind of the most recent fetch failure - `none`, `rejected`, `stale`, `no_data` or `transient` - with `message`, `http_status` and `at` as attributes while one is recorded. |
+| `sensor.<display>_version` | Sensor | The studylife-display version running on that Pi (also the device's software version, but this one follows upgrades live). |
+| `binary_sensor.<display>_quiet_hours_active` | Binary sensor | On while the display is inside its configured quiet hours. |
+| `binary_sensor.<display>_sessions_problem` | Problem | On while the display's last fetch of StudyLife's sessions failed (`sessions_ok` is false). |
 
 Poll interval defaults to 60s (studylife-display's own scheduled refresh is every 5
 minutes; polling faster would only re-read the same cached state) and is adjustable the

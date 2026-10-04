@@ -122,7 +122,14 @@
       "month_comparison": { "name": "Month comparison" },
       "weekly_report": { "name": "Weekly report" },
       "active_program": { "name": "Active study programme" },
-      "display_current_layout": { "name": "Current layout" }
+      "display_current_layout": { "name": "Current layout" },
+      "display_status": { "name": "Status", "state": { "ok": "OK", "degraded": "Degraded", "error": "Error", "setup": "Setup required" } },
+      "display_resolved_layout": { "name": "Resolved layout" },
+      "display_frame_kind": { "name": "Frame kind", "state": { "dashboard": "Dashboard", "error": "Error screen", "setup": "Setup screen" } },
+      "display_shown_at": { "name": "Frame shown at" },
+      "display_stale_minutes": { "name": "Data age" },
+      "display_last_error": { "name": "Last error", "state": { "none": "None", "rejected": "API key rejected", "stale": "Data stale", "no_data": "No data", "transient": "Transient failure" } },
+      "display_version": { "name": "Version" }
     },
     "binary_sensor": {
       "studying_now": { "name": "Studying now" },
@@ -131,7 +138,9 @@
       "month_quota_warning": { "name": "Monthly quota warning" },
       "inactivity_warning": { "name": "Inactivity warning" },
       "program_completed": { "name": "Completed" },
-      "program_active": { "name": "Active in app" }
+      "program_active": { "name": "Active in app" },
+      "display_quiet_hours": { "name": "Quiet hours" },
+      "display_sessions_problem": { "name": "Sessions problem" }
     },
     "calendar": {
       "sessions": { "name": "Study sessions" },
