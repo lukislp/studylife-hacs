@@ -1,5 +1,6 @@
 {
   "config": {
+    "flow_title": "{name}",
     "step": {
       "user": {
         "title": "StudyLife hinzufügen",
@@ -69,6 +70,18 @@
           "api_token": "API-Token",
           "verify_ssl": "SSL-Zertifikat prüfen"
         }
+      },
+      "zeroconf_confirm": {
+        "title": "Gefundenes studylife-display hinzufügen",
+        "description": "Unter {url} wurde ein studylife-display gefunden. Gib sein API-Token ein, um es hinzuzufügen.",
+        "data": {
+          "api_token": "API-Token",
+          "verify_ssl": "SSL-Zertifikat prüfen"
+        },
+        "data_description": {
+          "api_token": "Der Wert von DISPLAY_API_TOKEN in /etc/studylife-display.env auf dem Display.",
+          "verify_ssl": "Nur ausschalten, wenn das Display https mit einem selbstsignierten Zertifikat ausliefert."
+        }
       }
     },
     "error": {
@@ -78,7 +91,8 @@
     "abort": {
       "already_configured": "Dieser StudyLife-Server oder dieses Display ist bereits eingerichtet.",
       "reauth_successful": "Neu-Kopplung erfolgreich.",
-      "reconfigure_successful": "Neu konfiguriert."
+      "reconfigure_successful": "Neu konfiguriert.",
+      "api_disabled": "Das Display wurde gefunden, aber seine JSON-API ist aus: Setze zuerst DISPLAY_API_TOKEN darauf (siehe dessen README)."
     }
   },
   "options": {
@@ -172,6 +186,28 @@
     },
     "camera": {
       "current_frame": { "name": "Aktuelles Bild" }
+    }
+  },
+  "issues": {
+    "display_key_rejected": {
+      "title": "StudyLife-Key von {name} abgelehnt",
+      "description": "Der StudyLife-Key des Displays {name} wurde abgelehnt. Verbinde es neu unter {url}/connect."
+    },
+    "display_no_data": {
+      "title": "{name} hat keine Daten",
+      "description": "Das Display {name} hat noch nie StudyLife-Daten abgerufen. Prüfe die StudyLife-Verbindung unter {url}/connect."
+    },
+    "display_stale": {
+      "title": "{name} zeigt veraltete Daten",
+      "description": "Das Display {name} zeigt StudyLife-Daten, die älter als eine Stunde sind. Prüfe seine Netzwerkverbindung und die StudyLife-Verbindung unter {url}."
+    },
+    "display_sessions_scope": {
+      "title": "{name} kann keine Sessions lesen",
+      "description": "Die Agenda-Layouts des Displays {name} sind leer: Dem Key fehlt der Scope Sessions.GetAll. Füge den Scope in studylife-developers hinzu und verbinde das Display neu unter {url}/connect."
+    },
+    "display_unreachable": {
+      "title": "{name} ist nicht erreichbar",
+      "description": "Home Assistant konnte das Display {name} unter {url} mehrere Abfragen in Folge nicht erreichen. Prüfe, ob es eingeschaltet und im Netzwerk ist."
     }
   },
   "services": {

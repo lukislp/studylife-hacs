@@ -59,6 +59,14 @@ Setup:
    only if the display serves https with a self-signed certificate (`DISPLAY_TLS=true`
    without a trusted certificate).
 
+**Discovery:** a display that ships the DNS-SD advertisement (`_studylife-display._tcp`)
+announces itself on the LAN, and Home Assistant offers it under **Discovered** on the
+Devices & Services page - you only enter the API token (certificate verification defaults
+to off for an https display, since those are usually self-signed). A display whose JSON
+API is off (`DISPLAY_API_TOKEN` not set) is reported as such instead. Needs a
+studylife-display release that includes the advertisement; with older ones, add the
+display by hand as above.
+
 Each display device carries three primary entities plus a **Diagnostic** group:
 
 | Entity | Type | Meaning |
@@ -114,6 +122,22 @@ value fails with the display's own reason and changes nothing.
 Poll interval defaults to 60s (studylife-display's own scheduled refresh is every 5
 minutes; polling faster would only re-read the same cached state) and is adjustable the
 same way as an account entry's, via **Configure**.
+
+### Repairs
+
+Instead of failing silently, a display entry raises an issue under **Settings → Repairs**
+and removes it again as soon as the condition clears (or the entry is removed):
+
+| Issue | Severity | Raised when |
+|---|---|---|
+| Key rejected | Error | The display reports that its StudyLife key was rejected - reconnect it at `<display url>/connect`. |
+| No data | Error | The display has never fetched any StudyLife data. |
+| Outdated data | Warning | The display is degraded with data older than an hour, or reports stale data. |
+| Sessions scope missing | Warning | The agenda layouts are empty because the key lacks the `Sessions.GetAll` scope - add it in studylife-developers and reconnect. |
+| Unreachable | Error | The display's own API failed 3 polls in a row. |
+
+A rejected display API token is not reported here; it starts Home Assistant's usual
+re-authentication flow.
 
 ## Entities
 

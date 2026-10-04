@@ -24,6 +24,7 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_API_KEY, CONF_API_TOKEN, CONF_URL, CONF_VERIFY_SSL
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .api import StudyLifeApiAuthError, StudyLifeApiClient, StudyLifeApiError
 from .const import (
@@ -77,6 +78,11 @@ def _normalize_url(url: str) -> str:
     return url
 
 
+def _display_title_from_flow_name(name: str) -> str:
+    """The DNS-SD instance name without the service type suffix."""
+    return name.split("._studylife-display.", 1)[0]
+
+
 def _display_title(url: str) -> str:
     """ "StudyLife Display (studylife-display.local:8795)" - the host (and port, if not
     the scheme's default) distinguishes several displays in the flat device list without
@@ -92,6 +98,9 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for StudyLife."""
 
     VERSION = 1
+
+    _discovered_url: str = ""
+    _discovered_tls: bool = False
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -261,34 +270,110 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(url)
             self._abort_if_unique_id_configured()
 
-            client = DisplayApiClient(
-                url,
-                async_get_clientsession(self.hass, verify_ssl=verify_ssl),
-                token,
-                verify_ssl=verify_ssl,
-            )
-            try:
-                await client.async_test_connection()
-            except DisplayApiAuthError:
-                errors["base"] = "invalid_auth"
-            except DisplayApiError:
-                errors["base"] = "cannot_connect"
-            else:
-                return self.async_create_entry(
-                    title=_display_title(url),
-                    data={
-                        CONF_URL: url,
-                        CONF_API_TOKEN: token,
-                        CONF_VERIFY_SSL: verify_ssl,
-                        CONF_ENTRY_TYPE: ENTRY_TYPE_DISPLAY,
-                    },
-                )
+            error = await self._async_test_display(url, token, verify_ssl)
+            if error is None:
+                return self._create_display_entry(url, token, verify_ssl)
+            errors["base"] = error
 
         return self.async_show_form(
             step_id="display",
             data_schema=STEP_DISPLAY_SCHEMA,
             errors=errors,
             description_placeholders={"example": "http://studylife-display.local:8795"},
+        )
+
+    async def _async_test_display(
+        self, url: str, token: str, verify_ssl: bool
+    ) -> str | None:
+        """Probe the display's API; the error key for the form, None on success."""
+        client = DisplayApiClient(
+            url,
+            async_get_clientsession(self.hass, verify_ssl=verify_ssl),
+            token,
+            verify_ssl=verify_ssl,
+        )
+        try:
+            await client.async_test_connection()
+        except DisplayApiAuthError:
+            return "invalid_auth"
+        except DisplayApiError:
+            return "cannot_connect"
+        return None
+
+    def _create_display_entry(
+        self, url: str, token: str, verify_ssl: bool
+    ) -> ConfigFlowResult:
+        return self.async_create_entry(
+            title=_display_title(url),
+            data={
+                CONF_URL: url,
+                CONF_API_TOKEN: token,
+                CONF_VERIFY_SSL: verify_ssl,
+                CONF_ENTRY_TYPE: ENTRY_TYPE_DISPLAY,
+            },
+        )
+
+    async def async_step_zeroconf(
+        self, discovery_info: ZeroconfServiceInfo
+    ) -> ConfigFlowResult:
+        """A studylife-display announced itself via DNS-SD (_studylife-display._tcp)."""
+        properties = discovery_info.properties
+        tls = str(properties.get("tls", "false")).lower() == "true"
+        host = discovery_info.hostname.rstrip(".") or str(discovery_info.ip_address)
+        port = discovery_info.port or 8795
+        url = _normalize_url(f"{'https' if tls else 'http'}://{host}:{port}")
+
+        # Same unique_id scheme as the manual display step (the normalized URL), so a
+        # manually added display is recognised; a changed address updates its URL.
+        await self.async_set_unique_id(url)
+        self._abort_if_unique_id_configured(updates={CONF_URL: url})
+
+        # The same display may have been added by hand under another name (IP address
+        # instead of mDNS host name): match on the host part too.
+        known_hosts = {host.lower(), *(str(ip) for ip in discovery_info.ip_addresses)}
+        for entry in self._async_current_entries(include_ignore=False):
+            if _entry_type(entry) != ENTRY_TYPE_DISPLAY:
+                continue
+            entry_host = (urlsplit(entry.data.get(CONF_URL, "")).hostname or "").lower()
+            if entry_host in known_hosts:
+                return self.async_abort(reason="already_configured")
+
+        if str(properties.get("api", "true")).lower() == "false":
+            return self.async_abort(reason="api_disabled")
+
+        self._discovered_url = url
+        self._discovered_tls = tls
+        self.context["title_placeholders"] = {
+            "name": _display_title_from_flow_name(discovery_info.name)
+        }
+        return await self.async_step_zeroconf_confirm()
+
+    async def async_step_zeroconf_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        url = self._discovered_url
+
+        if user_input is not None:
+            token = user_input[CONF_API_TOKEN]
+            verify_ssl = user_input[CONF_VERIFY_SSL]
+            error = await self._async_test_display(url, token, verify_ssl)
+            if error is None:
+                return self._create_display_entry(url, token, verify_ssl)
+            errors["base"] = error
+
+        # A discovered https display most likely serves a self-signed certificate.
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_API_TOKEN): str,
+                vol.Required(CONF_VERIFY_SSL, default=not self._discovered_tls): bool,
+            }
+        )
+        return self.async_show_form(
+            step_id="zeroconf_confirm",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"url": url},
         )
 
     async def async_step_display_reauth_confirm(

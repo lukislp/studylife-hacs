@@ -25,6 +25,11 @@ from .display_api import (
     DisplayApiError,
     DisplayApiNotFoundError,
 )
+from .display_repairs import (
+    UNREACHABLE_THRESHOLD,
+    async_report_unreachable,
+    async_sync_display_issues,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -166,6 +171,7 @@ class DisplayCoordinator(DataUpdateCoordinator[DisplayData]):
             hass, _LOGGER, name=f"{DOMAIN}_display", update_interval=update_interval
         )
         self._client = client
+        self._failed_polls = 0  # consecutive UpdateFailed, for the "unreachable" repair
 
     @property
     def client(self) -> DisplayApiClient:
@@ -188,5 +194,12 @@ class DisplayCoordinator(DataUpdateCoordinator[DisplayData]):
             # display entry re-prompts for just the token (see config_flow.py).
             raise ConfigEntryAuthFailed(str(err)) from err
         except DisplayApiError as err:
+            self._failed_polls += 1
+            if self.config_entry and self._failed_polls >= UNREACHABLE_THRESHOLD:
+                async_report_unreachable(self.hass, self.config_entry)
             raise UpdateFailed(str(err)) from err
-        return _parse_display_data(state, layouts, settings)
+        self._failed_polls = 0
+        data = _parse_display_data(state, layouts, settings)
+        if self.config_entry:
+            async_sync_display_issues(self.hass, self.config_entry, data)
+        return data
