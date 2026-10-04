@@ -75,7 +75,62 @@ async def test_set_layout_posts_the_chosen_key(client: DisplayApiClient) -> None
         result = await client.async_set_layout("week")
         assert result == {"outcome": "refreshed"}
         request = _calls(m, "POST", f"{BASE_URL}/api/layout")[0]
+        # Neither cycle nor duo is sent unless given - an older display never sees them.
         assert request.kwargs["json"] == {"layout": "week"}
+
+
+async def test_set_layout_sends_cycle_only_when_given(client: DisplayApiClient) -> None:
+    with aioresponses() as m:
+        m.post(f"{BASE_URL}/api/layout", payload={"outcome": "refreshed"})
+        await client.async_set_layout("cycle", cycle=["today", "week"])
+        request = _calls(m, "POST", f"{BASE_URL}/api/layout")[0]
+        assert request.kwargs["json"] == {"layout": "cycle", "cycle": ["today", "week"]}
+
+
+async def test_set_layout_sends_duo_only_when_given(client: DisplayApiClient) -> None:
+    with aioresponses() as m:
+        m.post(f"{BASE_URL}/api/layout", payload={"outcome": "refreshed"})
+        await client.async_set_layout("auto", duo=["year", "month"])
+        request = _calls(m, "POST", f"{BASE_URL}/api/layout")[0]
+        assert request.kwargs["json"] == {"layout": "auto", "duo": ["year", "month"]}
+
+
+async def test_set_layout_sends_cycle_and_duo_together(
+    client: DisplayApiClient,
+) -> None:
+    with aioresponses() as m:
+        m.post(f"{BASE_URL}/api/layout", payload={"outcome": "refreshed"})
+        await client.async_set_layout("duo", cycle=["today"], duo=["year", "month"])
+        request = _calls(m, "POST", f"{BASE_URL}/api/layout")[0]
+        assert request.kwargs["json"] == {
+            "layout": "duo",
+            "cycle": ["today"],
+            "duo": ["year", "month"],
+        }
+
+
+async def test_set_layout_400_surfaces_the_displays_reason(
+    client: DisplayApiClient,
+) -> None:
+    """An invalid value is a 400 with {"error": "..."} and nothing written - the
+    reason is what the entities show the user, so it must be the exception text."""
+    with aioresponses() as m:
+        m.post(
+            f"{BASE_URL}/api/layout",
+            status=400,
+            payload={"error": "cycle: unknown layout 'nope'"},
+        )
+        with pytest.raises(DisplayApiError, match="unknown layout 'nope'"):
+            await client.async_set_layout("cycle", cycle=["nope"])
+
+
+async def test_400_without_a_json_reason_still_raises_display_api_error(
+    client: DisplayApiClient,
+) -> None:
+    with aioresponses() as m:
+        m.post(f"{BASE_URL}/api/layout", status=400, body="nope")
+        with pytest.raises(DisplayApiError, match="400"):
+            await client.async_set_layout("week")
 
 
 async def test_refresh(client: DisplayApiClient) -> None:
