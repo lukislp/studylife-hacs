@@ -174,6 +174,28 @@
       "current_frame": { "name": "Aktuelles Bild" }
     }
   },
+  "issues": {
+    "display_key_rejected": {
+      "title": "StudyLife-Key von {name} abgelehnt",
+      "description": "Der StudyLife-Key des Displays {name} wurde abgelehnt. Verbinde es neu unter {url}/connect."
+    },
+    "display_no_data": {
+      "title": "{name} hat keine Daten",
+      "description": "Das Display {name} hat noch nie StudyLife-Daten abgerufen. Prüfe die StudyLife-Verbindung unter {url}/connect."
+    },
+    "display_stale": {
+      "title": "{name} zeigt veraltete Daten",
+      "description": "Das Display {name} zeigt StudyLife-Daten, die älter als eine Stunde sind. Prüfe seine Netzwerkverbindung und die StudyLife-Verbindung unter {url}."
+    },
+    "display_sessions_scope": {
+      "title": "{name} kann keine Sessions lesen",
+      "description": "Die Agenda-Layouts des Displays {name} sind leer: Dem Key fehlt der Scope Sessions.GetAll. Füge den Scope in studylife-developers hinzu und verbinde das Display neu unter {url}/connect."
+    },
+    "display_unreachable": {
+      "title": "{name} ist nicht erreichbar",
+      "description": "Home Assistant konnte das Display {name} unter {url} mehrere Abfragen in Folge nicht erreichen. Prüfe, ob es eingeschaltet und im Netzwerk ist."
+    }
+  },
   "services": {
     "create_session": {
       "name": "Session anlegen",

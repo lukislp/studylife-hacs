@@ -28,6 +28,7 @@ from .const import (
 from .coordinator import StudyLifeCoordinator
 from .display_api import DisplayApiClient
 from .display_coordinator import DisplayCoordinator
+from .display_repairs import async_delete_display_issues
 from .services import (
     SERVICE_CREATE_SESSION,
     SERVICE_DELETE_SESSION,
@@ -149,6 +150,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     unloaded = await hass.config_entries.async_unload_platforms(entry, platforms)
     if unloaded:
+        if _entry_type(entry) == ENTRY_TYPE_DISPLAY:
+            async_delete_display_issues(hass, entry)
         hass.data[DOMAIN].pop(entry.entry_id)
         if not hass.data[DOMAIN]:
             hass.services.async_remove(DOMAIN, SERVICE_CREATE_SESSION)
@@ -158,3 +161,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.services.async_remove(DOMAIN, SERVICE_GENERATE_EXAM_PLAN)
             hass.services.async_remove(DOMAIN, SERVICE_SET_ACTIVE_PROGRAM)
     return unloaded
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Drop the display's Repairs issues when the entry is deleted (also covers an
+    entry that was never loaded, which async_unload_entry would not have seen)."""
+    if _entry_type(entry) == ENTRY_TYPE_DISPLAY:
+        async_delete_display_issues(hass, entry)

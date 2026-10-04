@@ -137,6 +137,28 @@
       "current_frame": { "name": "Current frame" }
     }
   },
+  "issues": {
+    "display_key_rejected": {
+      "title": "StudyLife key rejected by {name}",
+      "description": "The StudyLife key of the display {name} was rejected. Reconnect it at {url}/connect."
+    },
+    "display_no_data": {
+      "title": "{name} has no data",
+      "description": "The display {name} has never fetched any StudyLife data. Check its StudyLife connection at {url}/connect."
+    },
+    "display_stale": {
+      "title": "{name} shows outdated data",
+      "description": "The display {name} has been showing StudyLife data older than an hour. Check its network connection and its StudyLife connection at {url}."
+    },
+    "display_sessions_scope": {
+      "title": "{name} cannot read sessions",
+      "description": "The agenda layouts of the display {name} are empty: its key lacks the Sessions.GetAll scope. Add the scope in studylife-developers and reconnect the display at {url}/connect."
+    },
+    "display_unreachable": {
+      "title": "{name} is unreachable",
+      "description": "Home Assistant could not reach the display {name} at {url} for several polls in a row. Check that it is powered on and on the network."
+    }
+  },
   "services": {
     "create_session": {
       "name": "Create session",
