@@ -11,7 +11,11 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.studylife.api import StudyLifeApiError
-from custom_components.studylife.const import CONF_SCAN_INTERVAL, DOMAIN
+from custom_components.studylife.const import (
+    CONF_DISPLAY_ID,
+    CONF_SCAN_INTERVAL,
+    DOMAIN,
+)
 from custom_components.studylife.services import (
     SERVICE_CREATE_SESSION,
     SERVICE_DELETE_SESSION,
@@ -21,7 +25,12 @@ from custom_components.studylife.services import (
     SERVICE_UPDATE_SESSION,
 )
 
-from .conftest import TEST_API_KEY, TEST_URL
+from .conftest import (
+    TEST_API_KEY,
+    TEST_URL,
+    make_raw_display_state,
+    setup_display_integration,
+)
 
 # custom_components/studylife/__init__.py imports StudyLifeApiClient into its own
 # module namespace (`from .api import StudyLifeApiClient`), so that's what needs
@@ -236,3 +245,50 @@ async def test_unload_one_of_two_entries_keeps_services_registered(
 
     for service in ALL_SERVICES:
         assert hass.services.has_service(DOMAIN, service)
+
+
+async def test_display_id_is_stored_once_and_never_reloads_the_entry(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    """The first poll that yields an id persists it in the entry data; later polls leave
+    it alone, and neither write reloads the entry."""
+    mock_display_api_client.async_get_state.return_value = make_raw_display_state(
+        display_id="0123456789abcdef"
+    )
+    with patch.object(
+        hass.config_entries, "async_reload", AsyncMock(return_value=True)
+    ) as mock_reload:
+        coordinator = await setup_display_integration(
+            hass, mock_display_config_entry, mock_display_api_client
+        )
+        assert mock_display_config_entry.data[CONF_DISPLAY_ID] == "0123456789abcdef"
+
+        with patch.object(
+            hass.config_entries, "async_update_entry"
+        ) as mock_update_entry:
+            await coordinator.async_refresh()
+            mock_update_entry.assert_not_called()
+
+        # Even a changed id (the listener runs on every entry update) is not a reload.
+        mock_display_api_client.async_get_state.return_value = make_raw_display_state(
+            display_id="fedcba9876543210"
+        )
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+        assert mock_display_config_entry.data[CONF_DISPLAY_ID] == "fedcba9876543210"
+
+    mock_reload.assert_not_called()
+
+
+async def test_display_without_id_leaves_entry_data_untouched(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    assert CONF_DISPLAY_ID not in mock_display_config_entry.data

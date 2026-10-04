@@ -18,7 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import AUTO_LAYOUT, DOMAIN
+from .const import AUTO_LAYOUT, CONF_DISPLAY_ID, DOMAIN
 from .display_api import (
     DisplayApiAuthError,
     DisplayApiClient,
@@ -73,6 +73,9 @@ class DisplayData:
     # settings entities know not to exist.
     settings: dict[str, Any] = dataclasses.field(default_factory=dict)
     settings_sources: dict[str, bool] = dataclasses.field(default_factory=dict)
+    # Stable id of the display (hash of its machine id; same across restarts and address
+    # changes), from "id" in /api/state. None on a display that doesn't publish it yet.
+    display_id: str | None = None
 
 
 # What an older display (before the extended /api/layouts) implicitly offered: the one
@@ -127,6 +130,13 @@ def _parse_settings(raw: Any) -> tuple[dict[str, Any], dict[str, bool]]:
     )
 
 
+def _parse_display_id(raw: Any) -> str | None:
+    """The display id off the wire; None unless it is a non-empty string."""
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return None
+
+
 def _parse_display_data(
     state: dict[str, Any],
     layouts: dict[str, Any],
@@ -158,6 +168,7 @@ def _parse_display_data(
         panes=_parse_keys(layouts.get("panes")),
         settings=settings,
         settings_sources=settings_sources,
+        display_id=_parse_display_id(state.get("id")),
     )
 
 
@@ -202,4 +213,15 @@ class DisplayCoordinator(DataUpdateCoordinator[DisplayData]):
         data = _parse_display_data(state, layouts, settings)
         if self.config_entry:
             async_sync_display_issues(self.hass, self.config_entry, data)
+            # Persist the stable id so discovery knows it even while the entry is not
+            # loaded. The update listener ignores this change (see __init__.py), so it
+            # does not reload the entry.
+            if (
+                data.display_id
+                and self.config_entry.data.get(CONF_DISPLAY_ID) != data.display_id
+            ):
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data={**self.config_entry.data, CONF_DISPLAY_ID: data.display_id},
+                )
         return data

@@ -352,13 +352,14 @@ def make_raw_display_state(
     layout_choice: str = "auto",
     layout: str | None = "focus",
     current_frame: dict[str, Any] | None = _UNSET,
+    display_id: Any = _UNSET,
 ) -> dict[str, Any]:
     """Build a raw GET /api/state response, as display_coordinator.py's
     _parse_display_data expects to consume it - matches studylife-display's api.py
     (`_state`, layered on `health_report`) exactly. `current_frame` defaults to a
     matching dashboard frame; pass `current_frame=None` explicitly for "nothing shown
     on the panel yet" (current_frame is JSON null) - distinct from just not passing it."""
-    return {
+    raw = {
         "status": status,
         "setup": setup,
         "version": version,
@@ -381,6 +382,9 @@ def make_raw_display_state(
             }
         ),
     }
+    if display_id is not _UNSET:  # older displays publish no "id" at all
+        raw["id"] = display_id
+    return raw
 
 
 def make_raw_display_layout_option(
