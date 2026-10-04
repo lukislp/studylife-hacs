@@ -679,6 +679,30 @@ async def test_zeroconf_tls_defaults_verify_ssl_off(hass: HomeAssistant) -> None
     assert verify.default() is False
 
 
+@pytest.mark.parametrize("stored", ["192.168.1.50:8795", "http://192.168.1.50:8795"])
+async def test_zeroconf_entry_stored_by_ip_without_scheme_aborts(
+    hass: HomeAssistant, stored: str
+) -> None:
+    """A display added by hand as "192.168.1.50:8795" (no scheme, as older flows stored it)
+    is recognised when it announces itself under its host name over https."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_URL: stored,
+            CONF_API_TOKEN: TEST_DISPLAY_TOKEN,
+            CONF_VERIFY_SSL: False,
+            CONF_ENTRY_TYPE: ENTRY_TYPE_DISPLAY,
+        },
+        unique_id=stored,
+    )
+    entry.add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _zeroconf_info(tls="true"))
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
 async def test_zeroconf_already_configured_aborts(
     hass: HomeAssistant, mock_display_config_entry: MockConfigEntry
 ) -> None:

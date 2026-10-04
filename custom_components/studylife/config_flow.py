@@ -334,7 +334,11 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
         for entry in self._async_current_entries(include_ignore=False):
             if _entry_type(entry) != ENTRY_TYPE_DISPLAY:
                 continue
-            entry_host = (urlsplit(entry.data.get(CONF_URL, "")).hostname or "").lower()
+            # An entry added by hand may hold the address without a scheme
+            # ("192.168.5.61:8795"), which urlsplit reads as no host at all - normalise
+            # it the way the manual step does before taking the host part.
+            stored_url = _normalize_url(str(entry.data.get(CONF_URL, "")))
+            entry_host = (urlsplit(stored_url).hostname or "").lower()
             if entry_host in known_hosts:
                 return self.async_abort(reason="already_configured")
 
