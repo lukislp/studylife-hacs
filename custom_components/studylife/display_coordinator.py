@@ -1,8 +1,8 @@
 """Data update coordinator for a studylife-display config entry.
 
-Polls GET /api/state and GET /api/layouts every DEFAULT_DISPLAY_SCAN_INTERVAL seconds
+Polls GET /api/state, GET /api/layouts and GET /api/settings every DEFAULT_DISPLAY_SCAN_INTERVAL seconds
 (configurable via the same options flow the StudyLife account entries use) and maps the
-two JSON payloads onto one DisplayData - see display_api.py for the client and
+JSON payloads onto one DisplayData - see display_api.py for the client and
 studylife-display's api.py for the exact wire shapes these two calls return.
 """
 
@@ -19,7 +19,12 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import AUTO_LAYOUT, DOMAIN
-from .display_api import DisplayApiAuthError, DisplayApiClient, DisplayApiError
+from .display_api import (
+    DisplayApiAuthError,
+    DisplayApiClient,
+    DisplayApiError,
+    DisplayApiNotFoundError,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,6 +62,12 @@ class DisplayData:
     pseudo_options: list[LayoutOption]
     duo: list[str]  # the configured duo pair, left then right
     panes: list[str]  # the layouts that can be a duo half (every layout but "duo")
+    # GET /api/settings (studylife-display >= 1.11): the effective values by key and,
+    # per key, whether it comes from settings.json (True) or the environment/default
+    # (False). Both are empty on a display without that route, which is how the
+    # settings entities know not to exist.
+    settings: dict[str, Any] = dataclasses.field(default_factory=dict)
+    settings_sources: dict[str, bool] = dataclasses.field(default_factory=dict)
 
 
 # What an older display (before the extended /api/layouts) implicitly offered: the one
@@ -95,13 +106,34 @@ def _parse_keys(raw: Any) -> list[str]:
     return [str(key) for key in raw]
 
 
-def _parse_display_data(state: dict[str, Any], layouts: dict[str, Any]) -> DisplayData:
+def _parse_settings(raw: Any) -> tuple[dict[str, Any], dict[str, bool]]:
+    """(values, sources) of a GET /api/settings document; empty for anything else."""
+    if not isinstance(raw, dict):
+        return {}, {}
+    values = raw.get("values")
+    sources = raw.get("sources")
+    return (
+        dict(values) if isinstance(values, dict) else {},
+        (
+            {str(key): bool(value) for key, value in sources.items()}
+            if isinstance(sources, dict)
+            else {}
+        ),
+    )
+
+
+def _parse_display_data(
+    state: dict[str, Any],
+    layouts: dict[str, Any],
+    settings_document: Any = None,
+) -> DisplayData:
     frame = state.get("current_frame")
     kind = frame.get("kind") if frame else None
     layout = frame.get("layout") if frame else None
     shown_at = _parse_dt(frame.get("shown_at")) if frame else None
     options = _parse_options(layouts.get("options"))
     pseudo = _parse_options(layouts.get("pseudo")) or list(FALLBACK_PSEUDO_OPTIONS)
+    settings, settings_sources = _parse_settings(settings_document)
     return DisplayData(
         status=state.get("status", "error"),
         setup=bool(state.get("setup")),
@@ -119,6 +151,8 @@ def _parse_display_data(state: dict[str, Any], layouts: dict[str, Any]) -> Displ
         pseudo_options=pseudo,
         duo=_parse_keys(layouts.get("duo")),
         panes=_parse_keys(layouts.get("panes")),
+        settings=settings,
+        settings_sources=settings_sources,
     )
 
 
@@ -141,6 +175,13 @@ class DisplayCoordinator(DataUpdateCoordinator[DisplayData]):
         try:
             state = await self._client.async_get_state()
             layouts = await self._client.async_get_layouts()
+            try:
+                settings = await self._client.async_get_settings()
+            except DisplayApiNotFoundError:
+                # A display older than 1.11 has no /api/settings; /api/state just
+                # answered, so this is "route unknown", not a bad token. It keeps
+                # working, merely without the settings entities.
+                settings = None
         except DisplayApiAuthError as err:
             # Wrong or missing DISPLAY_API_TOKEN, or the API is off on that display -
             # ConfigEntryAuthFailed surfaces Home Assistant's reauth repair, which for a
@@ -148,4 +189,4 @@ class DisplayCoordinator(DataUpdateCoordinator[DisplayData]):
             raise ConfigEntryAuthFailed(str(err)) from err
         except DisplayApiError as err:
             raise UpdateFailed(str(err)) from err
-        return _parse_display_data(state, layouts)
+        return _parse_display_data(state, layouts, settings)

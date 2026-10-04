@@ -171,6 +171,18 @@ DISPLAY_DIAGNOSTIC_SENSOR_DESCRIPTIONS: tuple[
         attrs_fn=_last_error_attrs,
     ),
     StudyLifeDisplaySensorDescription(
+        key="settings_overrides",
+        translation_key="display_settings_overrides",
+        icon="mdi:file-cog",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        # Unknown (not 0) on a display without /api/settings: nothing is known there.
+        value_fn=lambda data: (
+            sum(1 for from_file in data.settings_sources.values() if from_file)
+            if data.settings
+            else None
+        ),
+    ),
+    StudyLifeDisplaySensorDescription(
         key="version",
         translation_key="display_version",
         icon="mdi:tag-outline",

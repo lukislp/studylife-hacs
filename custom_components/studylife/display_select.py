@@ -15,6 +15,9 @@ Three selects:
   panes at all - older displays (before the extended /api/layouts) don't, and get no duo
   entities rather than two permanently-unavailable ones. Changing a half re-sends the
   CURRENT layout choice together with the new pair, so the choice itself stays as it is.
+- "language" / "rotation" (EntityCategory.CONFIG): display settings from
+  GET /api/settings (studylife-display >= 1.11), each created only when the display
+  reports that key. Written with POST /api/settings.
 """
 
 from __future__ import annotations
@@ -31,6 +34,8 @@ from .display_api import DisplayApiError
 from .display_coordinator import DisplayCoordinator
 from .display_entity import StudyLifeDisplayEntity
 
+LANGUAGE_OPTIONS = ["de", "en"]
+ROTATION_OPTIONS = ["0", "180"]
 DUO_LEFT = 0
 DUO_RIGHT = 1
 
@@ -43,6 +48,10 @@ async def async_setup_display_select_entry(
     if coordinator.data.panes:
         entities.append(StudyLifeDisplayDuoSelect(coordinator, entry, DUO_LEFT))
         entities.append(StudyLifeDisplayDuoSelect(coordinator, entry, DUO_RIGHT))
+    if "language" in coordinator.data.settings:
+        entities.append(StudyLifeDisplayLanguageSelect(coordinator, entry))
+    if "rotation" in coordinator.data.settings:
+        entities.append(StudyLifeDisplayRotationSelect(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -111,3 +120,44 @@ class StudyLifeDisplayDuoSelect(StudyLifeDisplayEntity, SelectEntity):
         except DisplayApiError as err:
             raise HomeAssistantError(str(err)) from err
         await self.coordinator.async_request_refresh()
+
+
+class StudyLifeDisplayLanguageSelect(StudyLifeDisplayEntity, SelectEntity):
+    """The language the panel is drawn in."""
+
+    _attr_icon = "mdi:translate"
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_translation_key = "display_language"
+    _attr_options = LANGUAGE_OPTIONS
+
+    def __init__(self, coordinator: DisplayCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "language")
+
+    @property
+    def current_option(self) -> str | None:
+        value = self.data.settings.get("language")
+        return value if value in LANGUAGE_OPTIONS else None
+
+    async def async_select_option(self, option: str) -> None:
+        await self._async_apply_settings({"language": option})
+
+
+class StudyLifeDisplayRotationSelect(StudyLifeDisplayEntity, SelectEntity):
+    """How the panel is mounted: 0 or 180 degrees. Options are strings (a select's
+    states are text); the display wants the integer."""
+
+    _attr_icon = "mdi:screen-rotation"
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_translation_key = "display_rotation"
+    _attr_options = ROTATION_OPTIONS
+
+    def __init__(self, coordinator: DisplayCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "rotation")
+
+    @property
+    def current_option(self) -> str | None:
+        value = str(self.data.settings.get("rotation"))
+        return value if value in ROTATION_OPTIONS else None
+
+    async def async_select_option(self, option: str) -> None:
+        await self._async_apply_settings({"rotation": int(option)})

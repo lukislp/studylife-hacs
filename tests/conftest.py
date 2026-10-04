@@ -464,16 +464,47 @@ def make_raw_display_layouts_legacy(
     )
 
 
+def make_raw_display_settings(
+    *, sources: dict[str, bool] | None = None, **overrides: Any
+) -> dict[str, Any]:
+    """Build a raw GET /api/settings response (studylife-display >= 1.11). Keyword
+    arguments override single values; pass `sources=` to say which keys come from
+    settings.json (everything else reports False). To model an older display that lacks
+    a key, build the dict and `del doc["values"][key]`."""
+    values: dict[str, Any] = {
+        "language": "de",
+        "rotation": 0,
+        "quiet_hours": "23-7",
+        "clear_at": "04:00",
+        "update_check": True,
+        "auto_review": "sun 18-24",
+        "auto_agenda": "06-12",
+        "auto_tomorrow": "18-23",
+        "auto_quiet": "",
+        "duo": "degree,agenda",
+    }
+    values.update(overrides)
+    return {
+        "values": values,
+        "sources": {key: (sources or {}).get(key, False) for key in values},
+        "readonly": {},
+    }
+
+
 @pytest.fixture
 def mock_display_api_client() -> AsyncMock:
     """An AsyncMock standing in for DisplayApiClient, pre-wired with valid default
-    responses for the coordinator's poll (state + layouts)."""
+    responses for the coordinator's poll (state + layouts + settings)."""
     client = AsyncMock()
     client.base_url = TEST_DISPLAY_URL
     client.token = TEST_DISPLAY_TOKEN
     client.verify_ssl = True
     client.async_get_state.return_value = make_raw_display_state()
     client.async_get_layouts.return_value = make_raw_display_layouts()
+    client.async_get_settings.return_value = make_raw_display_settings()
+    client.async_update_settings.return_value = make_raw_display_settings()
+    client.async_reset_settings.return_value = make_raw_display_settings()
+    client.async_refresh.return_value = {"outcome": "refreshed"}
     client.async_get_current_png.return_value = b"\x89PNG-fake-bytes"
     return client
 

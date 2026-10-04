@@ -10,12 +10,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.studylife.display_api import DisplayApiNotFoundError
 from custom_components.studylife.display_sensor import (
     DISPLAY_DIAGNOSTIC_SENSOR_DESCRIPTIONS,
 )
 
 from .conftest import (
     get_entity_id,
+    make_raw_display_settings,
     make_raw_display_state,
     setup_display_integration,
 )
@@ -105,6 +107,7 @@ async def test_every_health_field_is_its_own_diagnostic_sensor(
         "shown_at",
         "stale_minutes",
         "last_error",
+        "settings_overrides",
         "version",
     }
     assert {d.key for d in DISPLAY_DIAGNOSTIC_SENSOR_DESCRIPTIONS} == expected
@@ -205,3 +208,49 @@ async def test_unknown_last_error_kind_falls_back_to_transient(
     )
 
     assert _state(hass, mock_display_config_entry, "last_error").state == "transient"
+
+
+async def test_settings_overrides_counts_keys_set_in_the_web_interface(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    mock_display_api_client.async_get_settings.return_value = make_raw_display_settings(
+        sources={"language": True, "clear_at": True, "rotation": False}
+    )
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    state = _state(hass, mock_display_config_entry, "settings_overrides")
+    assert state.state == "2"
+    # Attribute-free by design: no per-key breakdown on the entity.
+    assert "sources" not in state.attributes
+
+
+async def test_settings_overrides_is_zero_when_everything_is_environment(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    assert _state(hass, mock_display_config_entry, "settings_overrides").state == "0"
+
+
+async def test_settings_overrides_is_unknown_on_an_old_display(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    mock_display_api_client.async_get_settings.side_effect = DisplayApiNotFoundError(
+        "404"
+    )
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    state = _state(hass, mock_display_config_entry, "settings_overrides")
+    assert state.state == STATE_UNKNOWN
