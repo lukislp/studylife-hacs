@@ -3,14 +3,16 @@ options)."""
 
 from __future__ import annotations
 
+from ipaddress import ip_address
 from unittest.mock import patch
 
 import pytest
 import voluptuous as vol
-from homeassistant.config_entries import SOURCE_USER
+from homeassistant.config_entries import SOURCE_USER, SOURCE_ZEROCONF
 from homeassistant.const import CONF_API_KEY, CONF_API_TOKEN, CONF_URL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.studylife.api import StudyLifeApiAuthError, StudyLifeApiError
@@ -574,3 +576,185 @@ async def test_options_flow_display_entry_defaults_to_the_slower_interval(
         mock_display_config_entry.entry_id
     )
     assert result["data_schema"]({})[CONF_SCAN_INTERVAL] == 60
+
+
+# ---------------------------------------------------------------------------
+# Zeroconf discovery of a studylife-display
+# ---------------------------------------------------------------------------
+
+
+def _zeroconf_info(
+    *,
+    ip: str = "192.168.1.50",
+    hostname: str = "studylife-display.local.",
+    port: int = 8795,
+    tls: str = "false",
+    api: str = "true",
+) -> ZeroconfServiceInfo:
+    return ZeroconfServiceInfo(
+        ip_address=ip_address(ip),
+        ip_addresses=[ip_address(ip)],
+        port=port,
+        hostname=hostname,
+        type="_studylife-display._tcp.local.",
+        name="StudyLife Display (studylife-display)._studylife-display._tcp.local.",
+        properties={"version": "1.12.0", "tls": tls, "api": api, "path": "/"},
+    )
+
+
+async def _start_zeroconf_flow(hass: HomeAssistant, info: ZeroconfServiceInfo):
+    return await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_ZEROCONF}, data=info
+    )
+
+
+async def test_zeroconf_shows_confirm_form_with_url(hass: HomeAssistant) -> None:
+    result = await _start_zeroconf_flow(hass, _zeroconf_info())
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "zeroconf_confirm"
+    assert result["description_placeholders"] == {"url": TEST_DISPLAY_URL}
+    schema = result["data_schema"].schema
+    verify = next(k for k in schema if k == CONF_VERIFY_SSL)
+    assert verify.default() is True
+
+
+async def test_zeroconf_confirm_creates_display_entry(hass: HomeAssistant) -> None:
+    result = await _start_zeroconf_flow(hass, _zeroconf_info())
+
+    with patch(DISPLAY_PATCH_TARGET, return_value=None):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_API_TOKEN: TEST_DISPLAY_TOKEN, CONF_VERIFY_SSL: True},
+        )
+        await hass.async_block_till_done()
+
+    assert result2["type"] == FlowResultType.CREATE_ENTRY
+    assert result2["title"] == "StudyLife Display (studylife-display.local:8795)"
+    assert result2["data"] == {
+        CONF_URL: TEST_DISPLAY_URL,
+        CONF_API_TOKEN: TEST_DISPLAY_TOKEN,
+        CONF_VERIFY_SSL: True,
+        CONF_ENTRY_TYPE: ENTRY_TYPE_DISPLAY,
+    }
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert entry.unique_id == TEST_DISPLAY_URL
+
+
+async def test_zeroconf_wrong_token_shows_invalid_auth(hass: HomeAssistant) -> None:
+    result = await _start_zeroconf_flow(hass, _zeroconf_info())
+
+    with patch(DISPLAY_PATCH_TARGET, side_effect=DisplayApiAuthError("nope")):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_API_TOKEN: "wrong", CONF_VERIFY_SSL: True},
+        )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["step_id"] == "zeroconf_confirm"
+    assert result2["errors"] == {"base": "invalid_auth"}
+
+
+async def test_zeroconf_unreachable_shows_cannot_connect(hass: HomeAssistant) -> None:
+    result = await _start_zeroconf_flow(hass, _zeroconf_info())
+
+    with patch(DISPLAY_PATCH_TARGET, side_effect=DisplayApiError("down")):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_API_TOKEN: TEST_DISPLAY_TOKEN, CONF_VERIFY_SSL: True},
+        )
+
+    assert result2["errors"] == {"base": "cannot_connect"}
+
+
+async def test_zeroconf_tls_defaults_verify_ssl_off(hass: HomeAssistant) -> None:
+    result = await _start_zeroconf_flow(hass, _zeroconf_info(tls="true", port=8443))
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["description_placeholders"] == {
+        "url": "https://studylife-display.local:8443"
+    }
+    schema = result["data_schema"].schema
+    verify = next(k for k in schema if k == CONF_VERIFY_SSL)
+    assert verify.default() is False
+
+
+async def test_zeroconf_already_configured_aborts(
+    hass: HomeAssistant, mock_display_config_entry: MockConfigEntry
+) -> None:
+    mock_display_config_entry.add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _zeroconf_info())
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_zeroconf_same_host_other_port_aborts(
+    hass: HomeAssistant, mock_display_config_entry: MockConfigEntry
+) -> None:
+    """Same host name, new port: the unique_id (URL) differs, but the host matches an
+    existing display, so no duplicate is offered."""
+    mock_display_config_entry.add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _zeroconf_info(port=9000))
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_zeroconf_same_unique_id_updates_url(hass: HomeAssistant) -> None:
+    """An entry whose unique_id matches the discovered URL gets its stored URL refreshed."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_URL: "http://192.168.1.99:8795",
+            CONF_API_TOKEN: TEST_DISPLAY_TOKEN,
+            CONF_VERIFY_SSL: True,
+            CONF_ENTRY_TYPE: ENTRY_TYPE_DISPLAY,
+        },
+        unique_id=TEST_DISPLAY_URL,
+    )
+    entry.add_to_hass(hass)
+
+    with patch("custom_components.studylife.async_setup_entry", return_value=True):
+        result = await _start_zeroconf_flow(hass, _zeroconf_info())
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert entry.data[CONF_URL] == TEST_DISPLAY_URL
+
+
+async def test_zeroconf_ip_match_with_manually_added_display_aborts(
+    hass: HomeAssistant,
+) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_URL: "http://192.168.1.50:8795",
+            CONF_API_TOKEN: TEST_DISPLAY_TOKEN,
+            CONF_VERIFY_SSL: True,
+            CONF_ENTRY_TYPE: ENTRY_TYPE_DISPLAY,
+        },
+        unique_id="http://192.168.1.50:8795",
+    )
+    entry.add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _zeroconf_info())
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_zeroconf_api_disabled_aborts(hass: HomeAssistant) -> None:
+    result = await _start_zeroconf_flow(hass, _zeroconf_info(api="false"))
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "api_disabled"
+
+
+async def test_zeroconf_falls_back_to_ip_without_hostname(hass: HomeAssistant) -> None:
+    result = await _start_zeroconf_flow(hass, _zeroconf_info(hostname="."))
+
+    assert result["description_placeholders"] == {"url": "http://192.168.1.50:8795"}
