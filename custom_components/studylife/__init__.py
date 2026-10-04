@@ -44,7 +44,12 @@ PLATFORMS_ACCOUNT: list[Platform] = [
     Platform.CALENDAR,
     Platform.SELECT,
 ]
-PLATFORMS_DISPLAY: list[Platform] = [Platform.SENSOR, Platform.SELECT, Platform.CAMERA]
+PLATFORMS_DISPLAY: list[Platform] = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.SELECT,
+    Platform.CAMERA,
+]
 
 
 def _entry_type(entry: ConfigEntry) -> str:

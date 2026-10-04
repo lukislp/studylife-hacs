@@ -122,7 +122,14 @@
       "month_comparison": { "name": "Monatsvergleich" },
       "weekly_report": { "name": "Wochenbericht" },
       "active_program": { "name": "Aktiver Studiengang" },
-      "display_current_layout": { "name": "Aktuelles Layout" }
+      "display_current_layout": { "name": "Aktuelles Layout" },
+      "display_status": { "name": "Status", "state": { "ok": "OK", "degraded": "Eingeschränkt", "error": "Fehler", "setup": "Einrichtung nötig" } },
+      "display_resolved_layout": { "name": "Aufgelöstes Layout" },
+      "display_frame_kind": { "name": "Bildart", "state": { "dashboard": "Dashboard", "error": "Fehlerbild", "setup": "Einrichtungsbild" } },
+      "display_shown_at": { "name": "Bild angezeigt seit" },
+      "display_stale_minutes": { "name": "Datenalter" },
+      "display_last_error": { "name": "Letzter Fehler", "state": { "none": "Keiner", "rejected": "API-Key abgelehnt", "stale": "Daten veraltet", "no_data": "Keine Daten", "transient": "Vorübergehender Fehler" } },
+      "display_version": { "name": "Version" }
     },
     "binary_sensor": {
       "studying_now": { "name": "Lernt gerade" },
@@ -131,7 +138,9 @@
       "month_quota_warning": { "name": "Monatskontingent-Warnung" },
       "inactivity_warning": { "name": "Inaktivitäts-Warnung" },
       "program_completed": { "name": "Abgeschlossen" },
-      "program_active": { "name": "In der App aktiv" }
+      "program_active": { "name": "In der App aktiv" },
+      "display_quiet_hours": { "name": "Ruhezeiten" },
+      "display_sessions_problem": { "name": "Sessions-Problem" }
     },
     "calendar": {
       "sessions": { "name": "Lernsessions" },
