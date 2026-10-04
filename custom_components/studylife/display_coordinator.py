@@ -18,7 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN
+from .const import AUTO_LAYOUT, DOMAIN
 from .display_api import DisplayApiAuthError, DisplayApiClient, DisplayApiError
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,7 +47,29 @@ class DisplayData:
     )  # "dashboard" | "error" | "setup", None before ever shown
     current_frame_layout: str | None  # set only when current_frame_kind == "dashboard"
     current_frame_shown_at: datetime | None
-    layout_options: list[LayoutOption]
+    layout_options: list[LayoutOption]  # the real layouts, incl. "duo"
+    # Everything below arrived with studylife-display's extended GET /api/layouts
+    # (cycle + duo). Older displays don't send these keys, so each has a fallback that
+    # reproduces the pre-extension behaviour: just "auto" as the one pseudo choice, and
+    # empty lists - display_select.py / display_text.py create the duo and cycle
+    # entities only when the display actually reports panes / a cycle.
+    # "auto", "cycle", ... - the choices that aren't layouts themselves.
+    pseudo_options: list[LayoutOption]
+    cycle: list[str]  # the configured cycle order, drawn one per refresh
+    duo: list[str]  # the configured duo pair, left then right
+    panes: list[str]  # the layouts that can be a duo half (every layout but "duo")
+    next_in_cycle: str | None  # what "cycle" would draw on the next refresh
+
+
+# What an older display (before the extended /api/layouts) implicitly offered: the one
+# pseudo choice "auto", named the way studylife-display itself labels it.
+FALLBACK_PSEUDO_OPTIONS: list[LayoutOption] = [
+    LayoutOption(
+        key=AUTO_LAYOUT,
+        name={"de": "Automatisch", "en": "Automatic"},
+        description={},
+    )
+]
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -56,19 +78,32 @@ def _parse_dt(value: str | None) -> datetime | None:
     return dt_util.parse_datetime(value)
 
 
-def _parse_display_data(state: dict[str, Any], layouts: dict[str, Any]) -> DisplayData:
-    frame = state.get("current_frame")
-    kind = frame.get("kind") if frame else None
-    layout = frame.get("layout") if frame else None
-    shown_at = _parse_dt(frame.get("shown_at")) if frame else None
-    options = [
+def _parse_options(raw: Any) -> list[LayoutOption]:
+    return [
         LayoutOption(
             key=option["key"],
             name=option.get("name", {}),
             description=option.get("description", {}),
         )
-        for option in layouts.get("options", [])
+        for option in raw or []
     ]
+
+
+def _parse_keys(raw: Any) -> list[str]:
+    """A list of layout keys off the wire; anything that isn't a list (missing key on
+    an older display, JSON null) is an empty list."""
+    if not isinstance(raw, list):
+        return []
+    return [str(key) for key in raw]
+
+
+def _parse_display_data(state: dict[str, Any], layouts: dict[str, Any]) -> DisplayData:
+    frame = state.get("current_frame")
+    kind = frame.get("kind") if frame else None
+    layout = frame.get("layout") if frame else None
+    shown_at = _parse_dt(frame.get("shown_at")) if frame else None
+    options = _parse_options(layouts.get("options"))
+    pseudo = _parse_options(layouts.get("pseudo")) or list(FALLBACK_PSEUDO_OPTIONS)
     return DisplayData(
         status=state.get("status", "error"),
         setup=bool(state.get("setup")),
@@ -83,6 +118,11 @@ def _parse_display_data(state: dict[str, Any], layouts: dict[str, Any]) -> Displ
         current_frame_layout=layout,
         current_frame_shown_at=shown_at,
         layout_options=options,
+        pseudo_options=pseudo,
+        cycle=_parse_keys(layouts.get("cycle")),
+        duo=_parse_keys(layouts.get("duo")),
+        panes=_parse_keys(layouts.get("panes")),
+        next_in_cycle=layouts.get("next_in_cycle") or None,
     )
 
 

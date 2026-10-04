@@ -29,6 +29,18 @@ class DisplayApiAuthError(DisplayApiError):
     the connection as configured, so the coordinator triggers reauth for either."""
 
 
+async def _error_message(response: aiohttp.ClientResponse) -> str:
+    """The display's `{"error": "..."}` reason for a 400, or a generic fallback when
+    the body isn't the expected JSON."""
+    try:
+        payload = await response.json()
+    except (aiohttp.ClientError, ValueError):
+        payload = None
+    if isinstance(payload, dict) and payload.get("error"):
+        return str(payload["error"])
+    return f"{response.method} {response.url} returned 400 Bad Request"
+
+
 class DisplayApiClient:
     """Talks to /api/state, /api/layouts, /api/layout, /api/refresh and
     /api/current.png - see studylife-display's api.py for the exact shapes."""
@@ -92,6 +104,11 @@ class DisplayApiClient:
                         f"{method} {url} returned 401 - the token was rejected; check "
                         "DISPLAY_API_TOKEN on the display matches what was entered here"
                     )
+                if response.status == 400:
+                    # A rejected value (e.g. an unknown layout key in a cycle list) -
+                    # the display answers {"error": "<reason>"} and writes nothing, so
+                    # surface that reason instead of a bare "400 Bad Request".
+                    raise DisplayApiError(await _error_message(response))
                 if response.status not in ok_statuses:
                     response.raise_for_status()
                 return await response.json()
@@ -110,8 +127,23 @@ class DisplayApiClient:
     async def async_get_layouts(self) -> dict[str, Any]:
         return await self._request("GET", "/api/layouts")
 
-    async def async_set_layout(self, layout: str) -> dict[str, Any]:
-        return await self._request("POST", "/api/layout", json={"layout": layout})
+    async def async_set_layout(
+        self,
+        layout: str,
+        *,
+        cycle: list[str] | None = None,
+        duo: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """POST /api/layout - saves the choice (and, when given, the cycle order and/or
+        the duo pair) and triggers an immediate panel refresh. `cycle` and `duo` are only
+        sent when passed, so a plain layout change leaves both untouched on the display;
+        older displays that don't know them never see the keys either."""
+        body: dict[str, Any] = {"layout": layout}
+        if cycle is not None:
+            body["cycle"] = cycle
+        if duo is not None:
+            body["duo"] = duo
+        return await self._request("POST", "/api/layout", json=body)
 
     async def async_refresh(self) -> dict[str, Any]:
         return await self._request("POST", "/api/refresh")

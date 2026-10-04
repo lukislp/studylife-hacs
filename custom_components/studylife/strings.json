@@ -92,6 +92,7 @@
       "display_shown_at": { "name": "Frame shown at" },
       "display_stale_minutes": { "name": "Data age" },
       "display_last_error": { "name": "Last error", "state": { "none": "None", "rejected": "API key rejected", "stale": "Data stale", "no_data": "No data", "transient": "Transient failure" } },
+      "display_next_in_cycle": { "name": "Next in cycle" },
       "display_version": { "name": "Version" }
     },
     "binary_sensor": {
@@ -111,7 +112,12 @@
     },
     "select": {
       "active_course": { "name": "Active course" },
-      "display_layout": { "name": "Layout" }
+      "display_layout": { "name": "Layout" },
+      "display_duo_left": { "name": "Duo left" },
+      "display_duo_right": { "name": "Duo right" }
+    },
+    "text": {
+      "display_cycle": { "name": "Cycle order" }
     },
     "camera": {
       "current_frame": { "name": "Current frame" }

@@ -63,7 +63,7 @@ Each display device carries three primary entities plus a **Diagnostic** group:
 
 | Entity | Type | Meaning |
 |---|---|---|
-| `select.<display>_layout` | Select | The layout choice - `auto` plus every key the display's `GET /api/layouts` lists (`classic`, `focus`, `exam`, `week`, `semester`, `agenda`, `courses`, `milestone`, `review`). Picking one calls `POST /api/layout`, which both saves the choice and triggers an immediate full panel refresh on the display, exactly like its own web interface's "Apply" button. |
+| `select.<display>_layout` | Select | The layout choice - the display's pseudo choices (`auto`, and `cycle` on displays that offer it) followed by every layout key its `GET /api/layouts` lists (`classic`, `focus`, `exam`, `week`, `semester`, `agenda`, `courses`, `milestone`, `review`, `duo`, ...). Picking one calls `POST /api/layout`, which both saves the choice and triggers an immediate full panel refresh on the display, exactly like its own web interface's "Apply" button. |
 | `sensor.<display>_current_layout` | Sensor | What is **actually** on the panel right now - the current frame's layout, or its kind (`error`/`setup`) when it isn't a dashboard at all. |
 | `camera.<display>_current_frame` | Camera | The exact PNG currently on the panel (`GET /api/current.png`), fetched fresh on demand - the same image the display's own web interface shows under "Currently on the panel". |
 
@@ -80,8 +80,22 @@ entity under the device's **Diagnostic** group (they used to be attributes of
 | `sensor.<display>_stale_minutes` | Duration (min) | Age of the StudyLife data the panel shows. |
 | `sensor.<display>_last_error` | Enum | Kind of the most recent fetch failure - `none`, `rejected`, `stale`, `no_data` or `transient` - with `message`, `http_status` and `at` as attributes while one is recorded. |
 | `sensor.<display>_version` | Sensor | The studylife-display version running on that Pi (also the device's software version, but this one follows upgrades live). |
+| `sensor.<display>_next_in_cycle` | Sensor | What the `cycle` choice would draw on the next refresh (`unknown` on displays without the extended `/api/layouts`, see below). |
 | `binary_sensor.<display>_quiet_hours_active` | Binary sensor | On while the display is inside its configured quiet hours. |
 | `binary_sensor.<display>_sessions_problem` | Problem | On while the display's last fetch of StudyLife's sessions failed (`sessions_ok` is false). |
+
+Displays whose `GET /api/layouts` carries the cycle/duo extension (`pseudo`, `cycle`,
+`duo`, `panes`, `next_in_cycle`) additionally get a **Configuration** group for the two
+layouts that are configured rather than just picked. Older displays simply get no
+duo/cycle entities (and `next_in_cycle` reads `unknown`) - nothing else changes for them:
+
+| Entity | Type | Meaning |
+|---|---|---|
+| `select.<display>_duo_left` / `select.<display>_duo_right` | Select | The two halves of the `duo` layout, each pickable from the display's `panes` (every layout but `duo` itself). Changing one re-sends the current layout choice together with the new pair, so editing the pair never switches the display to `duo` by itself - pick `duo` in the layout select for that. Only created when the display reports `panes`. |
+| `text.<display>_cycle` | Text | The `cycle` order as a comma-separated list of layout keys, e.g. `classic, week, agenda, review` - the display draws the next one on every refresh while `cycle` is the layout choice. Setting a new value sends it with the current layout choice; an unknown key is refused by the display (HTTP 400) and surfaces as the action's error with the display's reason, nothing is written. Only created when the display reports a non-empty `cycle`. |
+
+Note that `cycle` only changes *which* layout is drawn - the panel's physical orientation
+(`rotate` in the display's settings) is untouched by any of this.
 
 Poll interval defaults to 60s (studylife-display's own scheduled refresh is every 5
 minutes; polling faster would only re-read the same cached state) and is adjustable the

@@ -14,7 +14,13 @@ from custom_components.studylife.display_sensor import (
     DISPLAY_DIAGNOSTIC_SENSOR_DESCRIPTIONS,
 )
 
-from .conftest import get_entity_id, make_raw_display_state, setup_display_integration
+from .conftest import (
+    get_entity_id,
+    make_raw_display_layouts,
+    make_raw_display_layouts_legacy,
+    make_raw_display_state,
+    setup_display_integration,
+)
 
 
 def _state(hass: HomeAssistant, entry: MockConfigEntry, key: str):
@@ -101,6 +107,7 @@ async def test_every_health_field_is_its_own_diagnostic_sensor(
         "shown_at",
         "stale_minutes",
         "last_error",
+        "next_in_cycle",
         "version",
     }
     assert {d.key for d in DISPLAY_DIAGNOSTIC_SENSOR_DESCRIPTIONS} == expected
@@ -201,3 +208,36 @@ async def test_unknown_last_error_kind_falls_back_to_transient(
     )
 
     assert _state(hass, mock_display_config_entry, "last_error").state == "transient"
+
+
+async def test_next_in_cycle_mirrors_the_layouts_payload(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    mock_display_api_client.async_get_layouts.return_value = make_raw_display_layouts(
+        next_in_cycle="week"
+    )
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    state = _state(hass, mock_display_config_entry, "next_in_cycle")
+    assert state.state == "week"
+    assert state.attributes["icon"] == "mdi:skip-next"
+
+
+async def test_next_in_cycle_is_unknown_on_a_legacy_display(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    mock_display_api_client.async_get_layouts.return_value = (
+        make_raw_display_layouts_legacy()
+    )
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    state = _state(hass, mock_display_config_entry, "next_in_cycle")
+    assert state.state == STATE_UNKNOWN

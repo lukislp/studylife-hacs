@@ -11,9 +11,16 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.studylife.display_api import DisplayApiAuthError, DisplayApiError
-from custom_components.studylife.display_coordinator import DisplayCoordinator
+from custom_components.studylife.display_coordinator import (
+    FALLBACK_PSEUDO_OPTIONS,
+    DisplayCoordinator,
+)
 
-from .conftest import make_raw_display_layouts, make_raw_display_state
+from .conftest import (
+    make_raw_display_layouts,
+    make_raw_display_layouts_legacy,
+    make_raw_display_state,
+)
 
 
 @pytest.fixture
@@ -37,6 +44,56 @@ async def test_parses_state_and_layouts_into_display_data(
     assert data.current_frame_shown_at is not None
     assert [o.key for o in data.layout_options] == ["classic", "focus", "exam"]
     assert data.layout_options[1].name == {"de": "Fokus", "en": "Focus"}
+    # The extended /api/layouts keys (cycle + duo release).
+    assert [o.key for o in data.pseudo_options] == ["auto", "cycle"]
+    assert data.pseudo_options[1].name == {"de": "Wechsel", "en": "Cycle"}
+    assert data.cycle == ["classic", "week", "agenda", "review"]
+    assert data.duo == ["focus", "agenda"]
+    assert data.panes == ["classic", "focus", "exam"]
+    assert data.next_in_cycle == "classic"
+
+
+async def test_legacy_layouts_payload_gets_the_documented_fallbacks(
+    coordinator: DisplayCoordinator, mock_display_api_client: AsyncMock
+) -> None:
+    """A display before the cycle/duo release sends only choice/resolved/options."""
+    mock_display_api_client.async_get_layouts.return_value = (
+        make_raw_display_layouts_legacy()
+    )
+    data = await coordinator._async_update_data()
+
+    assert [o.key for o in data.layout_options] == ["classic", "focus", "exam"]
+    assert data.pseudo_options == FALLBACK_PSEUDO_OPTIONS
+    assert data.pseudo_options[0].key == "auto"
+    assert data.pseudo_options[0].name == {"de": "Automatisch", "en": "Automatic"}
+    assert data.cycle == []
+    assert data.duo == []
+    assert data.panes == []
+    assert data.next_in_cycle is None
+
+
+async def test_null_or_malformed_extended_keys_fall_back_too(
+    coordinator: DisplayCoordinator, mock_display_api_client: AsyncMock
+) -> None:
+    # JSON null / a non-list where a list is expected must not blow up the poll.
+    layouts = make_raw_display_layouts()
+    layouts.update(
+        {
+            "pseudo": [],
+            "cycle": None,
+            "duo": "focus",
+            "panes": None,
+            "next_in_cycle": "",
+        }
+    )
+    mock_display_api_client.async_get_layouts.return_value = layouts
+    data = await coordinator._async_update_data()
+
+    assert [o.key for o in data.pseudo_options] == ["auto"]
+    assert data.cycle == []
+    assert data.duo == []
+    assert data.panes == []
+    assert data.next_in_cycle is None
 
 
 async def test_current_frame_none_before_the_first_frame(

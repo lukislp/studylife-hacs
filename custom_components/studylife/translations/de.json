@@ -129,6 +129,7 @@
       "display_shown_at": { "name": "Bild angezeigt seit" },
       "display_stale_minutes": { "name": "Datenalter" },
       "display_last_error": { "name": "Letzter Fehler", "state": { "none": "Keiner", "rejected": "API-Key abgelehnt", "stale": "Daten veraltet", "no_data": "Keine Daten", "transient": "Vorübergehender Fehler" } },
+      "display_next_in_cycle": { "name": "Nächstes im Wechsel" },
       "display_version": { "name": "Version" }
     },
     "binary_sensor": {
@@ -148,7 +149,12 @@
     },
     "select": {
       "active_course": { "name": "Aktiver Kurs" },
-      "display_layout": { "name": "Layout" }
+      "display_layout": { "name": "Layout" },
+      "display_duo_left": { "name": "Duo links" },
+      "display_duo_right": { "name": "Duo rechts" }
+    },
+    "text": {
+      "display_cycle": { "name": "Wechsel-Reihenfolge" }
     },
     "camera": {
       "current_frame": { "name": "Aktuelles Bild" }
