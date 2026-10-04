@@ -121,6 +121,9 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
             else DEFAULT_SCAN_INTERVAL,
         )
         if isinstance(coordinator, DisplayCoordinator):
+            # Only these fields are compared on purpose: the coordinator stores the
+            # display's stable id (CONF_DISPLAY_ID) in the entry data after a poll, and
+            # that must not reload the entry.
             unchanged = (
                 coordinator.client.base_url == entry.data[CONF_URL]
                 and coordinator.client.token == entry.data.get(CONF_API_TOKEN)

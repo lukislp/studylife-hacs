@@ -65,7 +65,9 @@ Devices & Services page - you only enter the API token (certificate verification
 to off for an https display, since those are usually self-signed). A display whose JSON
 API is off (`DISPLAY_API_TOKEN` not set) is reported as such instead. Needs a
 studylife-display release that includes the advertisement; with older ones, add the
-display by hand as above.
+display by hand as above. A display is recognised by its stable id (from the display
+release that publishes it), so changing its address or name does not offer it a second
+time.
 
 Each display device carries three primary entities plus a **Diagnostic** group:
 

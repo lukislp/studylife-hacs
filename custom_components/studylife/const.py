@@ -13,6 +13,9 @@ ENTRY_TYPE_ACCOUNT = "account"
 ENTRY_TYPE_DISPLAY = "display"
 
 CONF_SCAN_INTERVAL = "scan_interval"
+# The display's stable id (studylife-display >= the release that publishes it), kept in
+# the entry data so discovery can recognise the display even when the entry is not loaded.
+CONF_DISPLAY_ID = "display_id"
 DEFAULT_SCAN_INTERVAL = 30  # seconds, matches AppStateService's own poll interval
 # studylife-display's own scheduled refresh is every 5 minutes; polling its JSON API
 # faster than that would only ever re-read the same cached state.

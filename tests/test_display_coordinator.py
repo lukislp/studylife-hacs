@@ -209,3 +209,32 @@ async def test_settings_fetch_failure_raises_update_failed(
     mock_display_api_client.async_get_settings.side_effect = DisplayApiError("boom")
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
+
+
+async def test_parses_display_id(
+    coordinator: DisplayCoordinator, mock_display_api_client: AsyncMock
+) -> None:
+    mock_display_api_client.async_get_state.return_value = make_raw_display_state(
+        display_id="0123456789abcdef"
+    )
+
+    data = await coordinator._async_update_data()
+
+    assert data.display_id == "0123456789abcdef"
+
+
+@pytest.mark.parametrize("raw", [None, "", "   ", 42, ["x"], {"a": 1}])
+async def test_missing_or_malformed_display_id_is_none(
+    coordinator: DisplayCoordinator, mock_display_api_client: AsyncMock, raw: object
+) -> None:
+    mock_display_api_client.async_get_state.return_value = make_raw_display_state(
+        display_id=raw
+    )
+
+    assert (await coordinator._async_update_data()).display_id is None
+
+
+async def test_old_display_without_id_key_has_no_display_id(
+    coordinator: DisplayCoordinator,
+) -> None:
+    assert (await coordinator._async_update_data()).display_id is None
