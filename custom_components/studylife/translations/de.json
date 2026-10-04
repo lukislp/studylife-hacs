@@ -82,6 +82,16 @@
           "api_token": "Der Wert von DISPLAY_API_TOKEN in /etc/studylife-display.env auf dem Display.",
           "verify_ssl": "Nur ausschalten, wenn das Display https mit einem selbstsignierten Zertifikat ausliefert."
         }
+      },
+      "zeroconf_server_confirm": {
+        "title": "StudyLife-Server hinzufügen",
+        "description": "Unter {url} wurde ein StudyLife-Server gefunden. Der Server schützt seine API mit persönlichen API-Schlüsseln — erzeuge auf der Setup-Seite der StudyLife-App (Karte \"Home Assistant\") einen und füge ihn hier ein.",
+        "data": {
+          "api_key": "API-Schlüssel"
+        },
+        "data_description": {
+          "api_key": "Einmaliger Kopplungsschritt: Erzeuge auf der Setup-Seite der StudyLife-App (Karte \"Home Assistant\") einen Schlüssel und kopiere den angezeigten Wert. Der Schlüssel ist langlebig — er rotiert und läuft nie ab; er wird nur ungültig, wenn du ihn in der App neu erzeugst oder widerrufst."
+        }
       }
     },
     "error": {
@@ -92,7 +102,8 @@
       "already_configured": "Dieser StudyLife-Server oder dieses Display ist bereits eingerichtet.",
       "reauth_successful": "Neu-Kopplung erfolgreich.",
       "reconfigure_successful": "Neu konfiguriert.",
-      "api_disabled": "Das Display wurde gefunden, aber seine JSON-API ist aus: Setze zuerst DISPLAY_API_TOKEN darauf (siehe dessen README)."
+      "api_disabled": "Das Display wurde gefunden, aber seine JSON-API ist aus: Setze zuerst DISPLAY_API_TOKEN darauf (siehe dessen README).",
+      "invalid_discovery": "Der gefundene Dienst hat eine unbrauchbare Adresse gemeldet und kann deshalb nicht automatisch hinzugefügt werden. Füge den Server stattdessen von Hand hinzu."
     }
   },
   "options": {

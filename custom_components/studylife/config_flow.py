@@ -43,6 +43,9 @@ from .display_coordinator import DisplayCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+SERVICE_TYPE_DISPLAY = "_studylife-display._tcp.local."
+SERVICE_TYPE_SERVER = "_studylife._tcp.local."
+
 # API key is required since the server's phase-3 auth rework: every /api endpoint needs
 # either a passkey session (browser only) or a per-user API key - there is nothing Home
 # Assistant could reach without one, so an empty key would only ever produce a 401.
@@ -81,6 +84,36 @@ def _normalize_url(url: str) -> str:
     if not url.startswith(("http://", "https://")):
         url = f"http://{url}"
     return url
+
+
+def _is_absolute_http_url(url: str) -> bool:
+    parts = urlsplit(url)
+    try:
+        parts.port  # noqa: B018 - raises ValueError on an invalid port
+    except ValueError:
+        return False
+    return parts.scheme in ("http", "https") and bool(parts.hostname)
+
+
+def _host_and_port(url: str) -> tuple[str, int]:
+    """Lower-cased host and effective port of a URL, tolerating a missing scheme.
+
+    A hand-added entry may hold "192.168.5.61:8795" (no scheme), which urlsplit reads as
+    having no host - so normalise first. The scheme's default port (80/443) is made
+    explicit so "https://h" and "https://h:443" compare equal.
+    """
+    parts = urlsplit(_normalize_url(url))
+    default = 443 if parts.scheme == "https" else 80
+    try:
+        port = parts.port or default
+    except ValueError:
+        port = default
+    return (parts.hostname or "").lower(), port
+
+
+def _server_title_from_flow_name(name: str) -> str:
+    """The DNS-SD instance name without the service type suffix."""
+    return name.split("._studylife.", 1)[0]
 
 
 def _display_title_from_flow_name(name: str) -> str:
@@ -125,30 +158,37 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(url)
             self._abort_if_unique_id_configured()
 
-            client = StudyLifeApiClient(
-                url, async_get_clientsession(self.hass), api_key
-            )
-            try:
-                await client.async_test_connection()
-            except StudyLifeApiAuthError:
-                errors["base"] = "invalid_auth"
-            except StudyLifeApiError:
-                errors["base"] = "cannot_connect"
-            else:
-                return self.async_create_entry(
-                    title="StudyLife",
-                    data={
-                        CONF_URL: url,
-                        CONF_API_KEY: api_key,
-                        CONF_ENTRY_TYPE: ENTRY_TYPE_ACCOUNT,
-                    },
-                )
+            error = await self._async_test_account(url, api_key)
+            if error is None:
+                return self._create_account_entry(url, api_key)
+            errors["base"] = error
 
         return self.async_show_form(
             step_id="account",
             data_schema=STEP_ACCOUNT_SCHEMA,
             errors=errors,
             description_placeholders={"example": "http://studylife.local:8080"},
+        )
+
+    async def _async_test_account(self, url: str, api_key: str) -> str | None:
+        """Probe the server with the key; the error key for the form, None on success."""
+        client = StudyLifeApiClient(url, async_get_clientsession(self.hass), api_key)
+        try:
+            await client.async_test_connection()
+        except StudyLifeApiAuthError:
+            return "invalid_auth"
+        except StudyLifeApiError:
+            return "cannot_connect"
+        return None
+
+    def _create_account_entry(self, url: str, api_key: str) -> ConfigFlowResult:
+        return self.async_create_entry(
+            title="StudyLife",
+            data={
+                CONF_URL: url,
+                CONF_API_KEY: api_key,
+                CONF_ENTRY_TYPE: ENTRY_TYPE_ACCOUNT,
+            },
         )
 
     async def async_step_reauth(
@@ -321,6 +361,18 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_zeroconf(
         self, discovery_info: ZeroconfServiceInfo
     ) -> ConfigFlowResult:
+        """Dispatch on the announced service type: a studylife-display
+        (_studylife-display._tcp) or a StudyLife server (_studylife._tcp)."""
+        service_type = discovery_info.type.lower()
+        if service_type == SERVICE_TYPE_SERVER:
+            return await self._async_zeroconf_server(discovery_info)
+        if service_type == SERVICE_TYPE_DISPLAY:
+            return await self._async_zeroconf_display(discovery_info)
+        return self.async_abort(reason="invalid_discovery")
+
+    async def _async_zeroconf_display(
+        self, discovery_info: ZeroconfServiceInfo
+    ) -> ConfigFlowResult:
         """A studylife-display announced itself via DNS-SD (_studylife-display._tcp)."""
         properties = discovery_info.properties
         tls = str(properties.get("tls", "false")).lower() == "true"
@@ -435,6 +487,81 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="zeroconf_confirm",
             data_schema=schema,
+            errors=errors,
+            description_placeholders={"url": url},
+        )
+
+    async def _async_zeroconf_server(
+        self, discovery_info: ZeroconfServiceInfo
+    ) -> ConfigFlowResult:
+        """A StudyLife server announced itself via DNS-SD (_studylife._tcp)."""
+        properties = discovery_info.properties
+        host = discovery_info.hostname.rstrip(".") or str(discovery_info.ip_address)
+        port = discovery_info.port
+
+        # The TXT "url" is what Home Assistant must use: the server is usually behind an
+        # ingress/gateway, so it is NOT necessarily the announcing host. Only without it
+        # fall back to the announcing host/port.
+        txt_url = str(properties.get("url") or "").strip()
+        if txt_url:
+            if not _is_absolute_http_url(txt_url):
+                return self.async_abort(reason="invalid_discovery")
+            url = _normalize_url(txt_url)
+        else:
+            tls = str(properties.get("https", "false")).lower() == "true"
+            netloc = f"{host}:{port}" if port else host
+            url = _normalize_url(f"{'https' if tls else 'http'}://{netloc}")
+        if not _is_absolute_http_url(url):
+            return self.async_abort(reason="invalid_discovery")
+
+        await self.async_set_unique_id(url)
+        self._abort_if_unique_id_configured(updates={CONF_URL: url})
+
+        # Existing account entries use unique_id=<URL as typed>, so the unique_id check
+        # above is only a first filter. Duplicate rule (display entries and ignored
+        # entries are skipped): an existing server is the same one when
+        #   (a) its host AND effective port equal those of the discovered URL (default
+        #       ports 80/443 count as no port; hosts compare case-insensitively; a URL
+        #       stored without scheme is normalised first), or
+        #   (b) its host is the announcing host name / one of its IPs AND its effective
+        #       port equals the announced port (the same machine reached directly).
+        # The same host on a DIFFERENT port is another server and is still offered.
+        discovered = _host_and_port(url)
+        announcing_hosts = {
+            host.lower(),
+            *(str(ip) for ip in discovery_info.ip_addresses),
+        }
+        for entry in self._async_current_entries(include_ignore=False):
+            if _entry_type(entry) != ENTRY_TYPE_ACCOUNT:
+                continue
+            entry_host, entry_port = _host_and_port(str(entry.data.get(CONF_URL, "")))
+            if (entry_host, entry_port) == discovered or (
+                port and entry_host in announcing_hosts and entry_port == port
+            ):
+                return self.async_abort(reason="already_configured")
+
+        self._discovered_url = url
+        self.context["title_placeholders"] = {
+            "name": _server_title_from_flow_name(discovery_info.name)
+        }
+        return await self.async_step_zeroconf_server_confirm()
+
+    async def async_step_zeroconf_server_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        url = self._discovered_url
+
+        if user_input is not None:
+            api_key = user_input[CONF_API_KEY]
+            error = await self._async_test_account(url, api_key)
+            if error is None:
+                return self._create_account_entry(url, api_key)
+            errors["base"] = error
+
+        return self.async_show_form(
+            step_id="zeroconf_server_confirm",
+            data_schema=STEP_REAUTH_SCHEMA,
             errors=errors,
             description_placeholders={"url": url},
         )

@@ -821,6 +821,48 @@ def _display_entry(url: str = "https://10.0.0.5:8795", **extra: Any) -> MockConf
     )
 
 
+# ---------------------------------------------------------------------------
+# Zeroconf discovery of a StudyLife server (_studylife._tcp)
+# ---------------------------------------------------------------------------
+
+SERVER_URL = "https://studylife.example.org"
+
+
+def _server_info(
+    *,
+    ip: str = "192.168.1.60",
+    hostname: str = "studylife-host.local.",
+    port: int = 8080,
+    props: dict[str, str] | None = None,
+) -> ZeroconfServiceInfo:
+    """A server announcement; by default the TXT url points at an ingress, not at the
+    announcing host."""
+    if props is None:
+        props = {
+            "version": "1.2.3",
+            "url": SERVER_URL,
+            "https": "true",
+            "path": "/",
+        }
+    return ZeroconfServiceInfo(
+        ip_address=ip_address(ip),
+        ip_addresses=[ip_address(ip)],
+        port=port,
+        hostname=hostname,
+        type="_studylife._tcp.local.",
+        name="StudyLife._studylife._tcp.local.",
+        properties=props,
+    )
+
+
+def _account_entry(url: str) -> MockConfigEntry:
+    return MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_URL: url, CONF_API_KEY: TEST_API_KEY},
+        unique_id=url,
+    )
+
+
 async def test_zeroconf_stored_display_id_aborts_despite_different_host(
     hass: HomeAssistant,
 ) -> None:
@@ -886,3 +928,230 @@ async def test_zeroconf_entry_without_stored_id_or_coordinator_falls_back_to_hos
 
     assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+async def test_server_zeroconf_shows_confirm_form_with_txt_url(
+    hass: HomeAssistant,
+) -> None:
+    result = await _start_zeroconf_flow(hass, _server_info())
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "zeroconf_server_confirm"
+    assert result["description_placeholders"] == {"url": SERVER_URL}
+    assert list(result["data_schema"].schema) == [CONF_API_KEY]
+    flow = hass.config_entries.flow.async_get(result["flow_id"])
+    assert flow["context"]["title_placeholders"] == {"name": "StudyLife"}
+
+
+async def test_server_zeroconf_trailing_slash_in_txt_url_is_stripped(
+    hass: HomeAssistant,
+) -> None:
+    info = _server_info(props={"url": f"{SERVER_URL}/"})
+    result = await _start_zeroconf_flow(hass, info)
+
+    assert result["description_placeholders"] == {"url": SERVER_URL}
+
+
+@pytest.mark.parametrize(
+    ("props", "expected"),
+    [
+        ({"https": "false"}, "http://studylife-host.local:8080"),
+        ({"https": "true"}, "https://studylife-host.local:8080"),
+        ({}, "http://studylife-host.local:8080"),
+    ],
+)
+async def test_server_zeroconf_falls_back_to_host_and_port(
+    hass: HomeAssistant, props: dict[str, str], expected: str
+) -> None:
+    result = await _start_zeroconf_flow(hass, _server_info(props=props))
+
+    assert result["step_id"] == "zeroconf_server_confirm"
+    assert result["description_placeholders"] == {"url": expected}
+
+
+@pytest.mark.parametrize(
+    "bad", ["not a url", "ftp://studylife.local", "http://", "//x"]
+)
+async def test_server_zeroconf_invalid_txt_url_aborts(
+    hass: HomeAssistant, bad: str
+) -> None:
+    result = await _start_zeroconf_flow(hass, _server_info(props={"url": bad}))
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "invalid_discovery"
+
+
+async def test_server_zeroconf_confirm_creates_account_entry(
+    hass: HomeAssistant,
+) -> None:
+    result = await _start_zeroconf_flow(hass, _server_info())
+
+    with patch(PATCH_TARGET, return_value=None):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_API_KEY: TEST_API_KEY}
+        )
+        await hass.async_block_till_done()
+
+    assert result2["type"] == FlowResultType.CREATE_ENTRY
+    assert result2["title"] == "StudyLife"
+    assert result2["data"] == {
+        CONF_URL: SERVER_URL,
+        CONF_API_KEY: TEST_API_KEY,
+        CONF_ENTRY_TYPE: ENTRY_TYPE_ACCOUNT,
+    }
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert entry.unique_id == SERVER_URL
+
+
+async def test_server_zeroconf_wrong_key_shows_invalid_auth(
+    hass: HomeAssistant,
+) -> None:
+    result = await _start_zeroconf_flow(hass, _server_info())
+
+    with patch(PATCH_TARGET, side_effect=StudyLifeApiAuthError("nope")):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_API_KEY: "wrong"}
+        )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["step_id"] == "zeroconf_server_confirm"
+    assert result2["errors"] == {"base": "invalid_auth"}
+
+
+async def test_server_zeroconf_unreachable_shows_cannot_connect(
+    hass: HomeAssistant,
+) -> None:
+    result = await _start_zeroconf_flow(hass, _server_info())
+
+    with patch(PATCH_TARGET, side_effect=StudyLifeApiError("down")):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_API_KEY: TEST_API_KEY}
+        )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "cannot_connect"}
+
+
+@pytest.mark.parametrize(
+    "stored",
+    [
+        "https://studylife.example.org",  # identical
+        "https://studylife.example.org/",  # trailing slash
+        "https://studylife.example.org:443",  # explicit default port
+        "https://STUDYLIFE.example.org",  # host case
+    ],
+)
+async def test_server_zeroconf_same_server_aborts(
+    hass: HomeAssistant, stored: str
+) -> None:
+    _account_entry(stored).add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _server_info())
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_server_zeroconf_entry_stored_without_scheme_aborts(
+    hass: HomeAssistant,
+) -> None:
+    """Hand-added as "192.168.5.61:8795" (no scheme): recognised via the TXT-less
+    fallback URL built from the announcing IP and port."""
+    _account_entry("192.168.5.61:8795").add_to_hass(hass)
+
+    info = _server_info(ip="192.168.5.61", hostname=".", port=8795, props={})
+    result = await _start_zeroconf_flow(hass, info)
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_server_zeroconf_default_port_without_scheme_aborts(
+    hass: HomeAssistant,
+) -> None:
+    """A schemeless "studylife.example.org" is http on port 80."""
+    _account_entry("studylife.example.org").add_to_hass(hass)
+
+    info = _server_info(props={"url": "http://studylife.example.org"})
+    result = await _start_zeroconf_flow(hass, info)
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_server_zeroconf_announcing_host_and_port_match_aborts(
+    hass: HomeAssistant,
+) -> None:
+    """Behind an ingress: the entry points at the announcing machine directly (same IP
+    and port) while the TXT url names the gateway - still the same server."""
+    _account_entry("http://192.168.1.60:8080").add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _server_info())
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_server_zeroconf_announcing_host_other_port_is_offered(
+    hass: HomeAssistant,
+) -> None:
+    """Same host, different port is a different server: it is offered."""
+    _account_entry("http://192.168.1.60:9999").add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _server_info())
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "zeroconf_server_confirm"
+
+
+async def test_server_zeroconf_same_host_other_port_in_url_is_offered(
+    hass: HomeAssistant,
+) -> None:
+    _account_entry("http://studylife.local:5000").add_to_hass(hass)
+
+    info = _server_info(props={"url": "http://studylife.local:5001"})
+    result = await _start_zeroconf_flow(hass, info)
+
+    assert result["type"] == FlowResultType.FORM
+
+
+async def test_server_zeroconf_display_entry_does_not_block(
+    hass: HomeAssistant, mock_display_config_entry: MockConfigEntry
+) -> None:
+    mock_display_config_entry.add_to_hass(hass)
+
+    info = _server_info(
+        ip="192.168.1.50",
+        hostname="studylife-display.local.",
+        port=8080,
+        props={"url": "http://studylife-display.local:8080"},
+    )
+    result = await _start_zeroconf_flow(hass, info)
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "zeroconf_server_confirm"
+
+
+async def test_server_zeroconf_same_unique_id_updates_url(hass: HomeAssistant) -> None:
+    entry = _account_entry("http://old.example:1")
+    entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(entry, unique_id=SERVER_URL)
+
+    with patch("custom_components.studylife.async_setup_entry", return_value=True):
+        result = await _start_zeroconf_flow(hass, _server_info())
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert entry.data[CONF_URL] == SERVER_URL
+
+
+async def test_server_zeroconf_ignored_entry_is_skipped(hass: HomeAssistant) -> None:
+    """An ignored entry (source "ignore", no URL) must not break the host comparison."""
+    MockConfigEntry(
+        domain=DOMAIN, source="ignore", data={}, unique_id="something-else"
+    ).add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _server_info())
+
+    assert result["type"] == FlowResultType.FORM

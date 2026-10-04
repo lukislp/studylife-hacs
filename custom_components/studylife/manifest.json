@@ -13,6 +13,7 @@
   "requirements": [],
   "version": "1.11.2",
   "zeroconf": [
-    "_studylife-display._tcp.local."
+    "_studylife-display._tcp.local.",
+    "_studylife._tcp.local."
   ]
 }
