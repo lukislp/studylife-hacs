@@ -63,7 +63,7 @@ Each display device carries three primary entities plus a **Diagnostic** group:
 
 | Entity | Type | Meaning |
 |---|---|---|
-| `select.<display>_layout` | Select | The layout choice - the display's pseudo choices (`auto`) followed by every layout key its `GET /api/layouts` lists (`classic`, `focus`, `exam`, `week`, `semester`, `agenda`, `courses`, `milestone`, `review`, `duo`, ...). Picking one calls `POST /api/layout`, which both saves the choice and triggers an immediate full panel refresh on the display, exactly like its own web interface's "Apply" button. |
+| `select.<display>_layout` | Select | The layout choice - the display's pseudo choices (`auto`) followed by every layout key its `GET /api/layouts` lists (`classic`, `focus`, `exam`, `week`, `degree`, `agenda`, `courses`, `milestone`, `review`, `duo`, ...). Picking one calls `POST /api/layout`, which both saves the choice and triggers an immediate full panel refresh on the display, exactly like its own web interface's "Apply" button. |
 | `sensor.<display>_current_layout` | Sensor | What is **actually** on the panel right now - the current frame's layout, or its kind (`error`/`setup`) when it isn't a dashboard at all. |
 | `camera.<display>_current_frame` | Camera | The exact PNG currently on the panel (`GET /api/current.png`), fetched fresh on demand - the same image the display's own web interface shows under "Currently on the panel". |
 
