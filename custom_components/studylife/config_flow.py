@@ -10,6 +10,7 @@ display_entity.py) - "add a display" can be run again for a second, third, ... p
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Mapping
 from typing import Any
@@ -27,10 +28,16 @@ from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
-from .api import StudyLifeApiAuthError, StudyLifeApiClient, StudyLifeApiError
+from .api import (
+    StudyLifeApiAuthError,
+    StudyLifeApiClient,
+    StudyLifeApiError,
+    is_valid_instance_id,
+)
 from .const import (
     CONF_DISPLAY_ID,
     CONF_ENTRY_TYPE,
+    CONF_INSTANCE_ID,
     CONF_SCAN_INTERVAL,
     DEFAULT_DISPLAY_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
@@ -45,6 +52,10 @@ _LOGGER = logging.getLogger(__name__)
 
 SERVICE_TYPE_DISPLAY = "_studylife-display._tcp.local."
 SERVICE_TYPE_SERVER = "_studylife._tcp.local."
+
+# Budget for the one-off GET /api/instance asked of an existing server entry that has not
+# stored its instance id yet, while a discovery is being evaluated.
+INSTANCE_PROBE_TIMEOUT = 5
 
 # API key is required since the server's phase-3 auth rework: every /api endpoint needs
 # either a passkey session (browser only) or a per-user API key - there is nothing Home
@@ -514,6 +525,15 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
         if not _is_absolute_http_url(url):
             return self.async_abort(reason="invalid_discovery")
 
+        # Address-independent identity first: the server's stable instance id (TXT "id")
+        # identifies an already configured server whatever URL it is configured under.
+        announced_id = str(properties.get("id") or "").strip().lower()
+        if is_valid_instance_id(announced_id):
+            if await self._async_matches_configured_server(announced_id, url):
+                return self.async_abort(reason="already_configured")
+        else:
+            announced_id = ""
+
         await self.async_set_unique_id(url)
         self._abort_if_unique_id_configured(updates={CONF_URL: url})
 
@@ -545,6 +565,67 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
             "name": _server_title_from_flow_name(discovery_info.name)
         }
         return await self.async_step_zeroconf_server_confirm()
+
+    async def _async_matches_configured_server(
+        self, announced_id: str, announced_url: str
+    ) -> bool:
+        """True when an account entry is the server with this stable instance id.
+
+        Entries that have not stored their id yet (not set up since the update, or the
+        fetch failed then) are asked once - concurrently, with a short timeout, errors
+        ignored - and the answer is stored on the entry, so the first discovery after
+        the update already recognises the server."""
+        entries = [
+            entry
+            for entry in self._async_current_entries(include_ignore=False)
+            if _entry_type(entry) == ENTRY_TYPE_ACCOUNT
+        ]
+        _LOGGER.debug(
+            "Server discovery: announced id=%s url=%s, %d account entries",
+            announced_id,
+            announced_url,
+            len(entries),
+        )
+        missing = [e for e in entries if not e.data.get(CONF_INSTANCE_ID)]
+        if missing:
+            await asyncio.gather(*(self._async_probe_instance_id(e) for e in missing))
+
+        matched = False
+        for entry in entries:
+            stored_id = entry.data.get(CONF_INSTANCE_ID)
+            by_id = stored_id == announced_id
+            _LOGGER.debug(
+                "Server discovery: entry %s stored host=%s stored id=%s matched by id=%s",
+                entry.entry_id,
+                urlsplit(_normalize_url(str(entry.data.get(CONF_URL, "")))).hostname,
+                stored_id,
+                by_id,
+            )
+            matched = matched or by_id
+        return matched
+
+    async def _async_probe_instance_id(self, entry: ConfigEntry) -> None:
+        """One-off GET /api/instance against an entry's own URL; stores the id."""
+        client = StudyLifeApiClient(
+            _normalize_url(str(entry.data.get(CONF_URL, ""))),
+            async_get_clientsession(self.hass),
+            entry.data.get(CONF_API_KEY),
+        )
+        try:
+            async with asyncio.timeout(INSTANCE_PROBE_TIMEOUT):
+                info = await client.async_get_instance()
+        except Exception:
+            _LOGGER.debug(
+                "Server discovery: probing entry %s failed",
+                entry.entry_id,
+                exc_info=True,
+            )
+            return
+        instance_id = info.get("id") if info else None
+        if instance_id:
+            self.hass.config_entries.async_update_entry(
+                entry, data={**entry.data, CONF_INSTANCE_ID: instance_id}
+            )
 
     async def async_step_zeroconf_server_confirm(
         self, user_input: dict[str, Any] | None = None

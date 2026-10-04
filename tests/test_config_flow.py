@@ -21,6 +21,7 @@ from custom_components.studylife.api import StudyLifeApiAuthError, StudyLifeApiE
 from custom_components.studylife.config_flow import _normalize_url
 from custom_components.studylife.const import (
     CONF_ENTRY_TYPE,
+    CONF_INSTANCE_ID,
     CONF_SCAN_INTERVAL,
     DOMAIN,
     ENTRY_TYPE_ACCOUNT,
@@ -1155,3 +1156,152 @@ async def test_server_zeroconf_ignored_entry_is_skipped(hass: HomeAssistant) -> 
     result = await _start_zeroconf_flow(hass, _server_info())
 
     assert result["type"] == FlowResultType.FORM
+
+
+# ---------------------------------------------------------------------------
+# Server discovery by stable instance id
+# ---------------------------------------------------------------------------
+
+SERVER_ID = "0123456789abcdef0123456789abcdef"
+OTHER_SERVER_ID = "fedcba9876543210fedcba9876543210"
+CONFIGURED_URL = "https://studylife.lukas2311-homelab.com"
+ANNOUNCED_URL = "https://studylife.heim.lan"
+INSTANCE_PATCH_TARGET = (
+    "custom_components.studylife.config_flow.StudyLifeApiClient.async_get_instance"
+)
+
+
+def _id_info(server_id: str | None = SERVER_ID) -> ZeroconfServiceInfo:
+    props = {"version": "1.2.3", "url": ANNOUNCED_URL, "https": "true", "path": "/"}
+    if server_id is not None:
+        props["id"] = server_id
+    return _server_info(ip="10.9.8.7", hostname="other-host.local.", props=props)
+
+
+def _entry_with_id(server_id: str | None) -> MockConfigEntry:
+    data = {CONF_URL: CONFIGURED_URL, CONF_API_KEY: TEST_API_KEY}
+    if server_id is not None:
+        data[CONF_INSTANCE_ID] = server_id
+    return MockConfigEntry(domain=DOMAIN, data=data, unique_id=CONFIGURED_URL)
+
+
+async def test_zeroconf_server_stored_id_aborts_despite_different_url(
+    hass: HomeAssistant,
+) -> None:
+    _entry_with_id(SERVER_ID).add_to_hass(hass)
+
+    with patch(INSTANCE_PATCH_TARGET, new_callable=AsyncMock) as probe:
+        result = await _start_zeroconf_flow(hass, _id_info())
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    probe.assert_not_called()
+
+
+async def test_zeroconf_server_entry_without_id_is_recognised_by_probe_and_stored(
+    hass: HomeAssistant,
+) -> None:
+    entry = _entry_with_id(None)
+    entry.add_to_hass(hass)
+
+    with patch(
+        INSTANCE_PATCH_TARGET,
+        new_callable=AsyncMock,
+        return_value={"id": SERVER_ID, "version": "1.2.3"},
+    ) as probe:
+        result = await _start_zeroconf_flow(hass, _id_info())
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    probe.assert_awaited_once()
+    assert entry.data[CONF_INSTANCE_ID] == SERVER_ID
+
+
+async def test_zeroconf_server_probe_stores_id_even_when_it_differs(
+    hass: HomeAssistant,
+) -> None:
+    entry = _entry_with_id(None)
+    entry.add_to_hass(hass)
+
+    with patch(
+        INSTANCE_PATCH_TARGET,
+        new_callable=AsyncMock,
+        return_value={"id": OTHER_SERVER_ID},
+    ):
+        result = await _start_zeroconf_flow(hass, _id_info())
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "zeroconf_server_confirm"
+    assert entry.data[CONF_INSTANCE_ID] == OTHER_SERVER_ID
+
+
+async def test_zeroconf_server_different_stored_id_offers_the_server(
+    hass: HomeAssistant,
+) -> None:
+    _entry_with_id(OTHER_SERVER_ID).add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _id_info())
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "zeroconf_server_confirm"
+
+
+async def test_zeroconf_server_probe_failure_falls_back_gracefully(
+    hass: HomeAssistant,
+) -> None:
+    entry = _entry_with_id(None)
+    entry.add_to_hass(hass)
+
+    with patch(
+        INSTANCE_PATCH_TARGET,
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("unreachable"),
+    ):
+        result = await _start_zeroconf_flow(hass, _id_info())
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "zeroconf_server_confirm"
+    assert CONF_INSTANCE_ID not in entry.data
+
+
+async def test_zeroconf_server_probe_returning_none_falls_back_to_host_rule(
+    hass: HomeAssistant,
+) -> None:
+    # Same host as announced, no id obtainable: the old duplicate rule still applies.
+    _account_entry(ANNOUNCED_URL).add_to_hass(hass)
+
+    with patch(INSTANCE_PATCH_TARGET, new_callable=AsyncMock, return_value=None):
+        result = await _start_zeroconf_flow(hass, _id_info())
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_zeroconf_server_without_txt_id_uses_duplicate_rules_and_never_probes(
+    hass: HomeAssistant,
+) -> None:
+    _entry_with_id(None).add_to_hass(hass)
+
+    with patch(INSTANCE_PATCH_TARGET, new_callable=AsyncMock) as probe:
+        result = await _start_zeroconf_flow(hass, _id_info(None))
+
+    assert result["type"] == FlowResultType.FORM
+    probe.assert_not_called()
+
+
+async def test_zeroconf_server_invalid_txt_id_is_ignored(hass: HomeAssistant) -> None:
+    _entry_with_id(SERVER_ID).add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _id_info("not-a-valid-id"))
+
+    assert result["type"] == FlowResultType.FORM
+
+
+async def test_zeroconf_server_id_ignores_display_entries(hass: HomeAssistant) -> None:
+    _display_entry().add_to_hass(hass)
+
+    with patch(INSTANCE_PATCH_TARGET, new_callable=AsyncMock) as probe:
+        result = await _start_zeroconf_flow(hass, _id_info())
+
+    assert result["type"] == FlowResultType.FORM
+    probe.assert_not_called()
