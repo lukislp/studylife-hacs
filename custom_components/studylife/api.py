@@ -26,6 +26,7 @@ predates them answers with a plain 404 - see StudyLifeApiEndpointMissingError.
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any
 
 import aiohttp
@@ -40,6 +41,15 @@ _METRICS_ENDPOINT_MISSING_HINT = (
     "that added Home Assistant metrics support (see this integration's README for the minimum "
     "StudyLife server version). Update the StudyLife server, then reload this integration."
 )
+
+
+# A server instance id: 32 lowercase hex characters (a GUID without dashes).
+_INSTANCE_ID_RE = re.compile(r"[0-9a-f]{32}")
+
+
+def is_valid_instance_id(value: Any) -> bool:
+    """True for a well-formed instance id (32 lowercase hex characters)."""
+    return isinstance(value, str) and _INSTANCE_ID_RE.fullmatch(value) is not None
 
 
 class StudyLifeApiError(Exception):
@@ -297,6 +307,20 @@ class StudyLifeApiClient:
         the course's open topics across free calendar slots up to the exam date and creates
         the sessions directly (no preview step, since there's no browser to confirm one)."""
         return await self._request("POST", "/api/planner/exam-plan", json=request)
+
+    async def async_get_instance(self) -> dict[str, Any] | None:
+        """GET /api/instance - the server's stable instance id and version, or None.
+
+        Anonymous endpoint (the API key is sent anyway, which is harmless). Never raises:
+        an older server (404), any other HTTP/network error, a timeout, a malformed body
+        or an id that is not 32 lowercase hex characters all mean "no id available"."""
+        try:
+            body = await self._request("GET", "/api/instance")
+        except (StudyLifeApiError, ValueError, aiohttp.ClientError):
+            return None
+        if not isinstance(body, dict) or not is_valid_instance_id(body.get("id")):
+            return None
+        return body
 
     async def async_test_connection(self) -> None:
         """Raise StudyLifeApiError if the base URL doesn't look like a StudyLife server."""

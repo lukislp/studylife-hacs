@@ -75,7 +75,9 @@ server's `docs/MDNS.md`). Home Assistant then offers it under **Discovered** and
 for the API key (generate it on the app's Setup page, "Home Assistant" card). The address
 it uses is the base URL configured on the server (usually the ingress/gateway address),
 not necessarily the announcing host; a server you already added by hand is not offered
-again.
+again. A server is recognised by its stable instance id (from the server release that
+publishes it), so announcing a different URL than the one configured does not offer it
+twice.
 
 Each display device carries three primary entities plus a **Diagnostic** group:
 
