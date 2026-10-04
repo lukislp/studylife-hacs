@@ -69,6 +69,14 @@ display by hand as above. A display is recognised by its stable id (from the dis
 release that publishes it), so changing its address or name does not offer it a second
 time.
 
+**Server discovery:** a StudyLife server announces itself (`_studylife._tcp`) when its
+operator enables the opt-in mDNS announcement (`Discovery__Mdns__*`, see the StudyLife
+server's `docs/MDNS.md`). Home Assistant then offers it under **Discovered** and only asks
+for the API key (generate it on the app's Setup page, "Home Assistant" card). The address
+it uses is the base URL configured on the server (usually the ingress/gateway address),
+not necessarily the announcing host; a server you already added by hand is not offered
+again.
+
 Each display device carries three primary entities plus a **Diagnostic** group:
 
 | Entity | Type | Meaning |
