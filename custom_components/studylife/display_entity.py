@@ -8,12 +8,16 @@ const.py's ENTRY_TYPE_DISPLAY and config_flow.py's async_step_display).
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_URL
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .display_api import DisplayApiError
 from .display_coordinator import DisplayCoordinator, DisplayData
 
 
@@ -42,3 +46,12 @@ class StudyLifeDisplayEntity(CoordinatorEntity[DisplayCoordinator]):
     @property
     def data(self) -> DisplayData:
         return self.coordinator.data
+
+    async def _async_apply_settings(self, changes: dict[str, Any]) -> None:
+        """POST the given settings keys, then refresh. The display validates every
+        value and answers 400 with a reason, which is shown to the user as is."""
+        try:
+            await self.coordinator.client.async_update_settings(changes)
+        except DisplayApiError as err:
+            raise HomeAssistantError(str(err)) from err
+        await self.coordinator.async_request_refresh()

@@ -129,7 +129,8 @@
       "display_shown_at": { "name": "Bild angezeigt seit" },
       "display_stale_minutes": { "name": "Datenalter" },
       "display_last_error": { "name": "Letzter Fehler", "state": { "none": "Keiner", "rejected": "API-Key abgelehnt", "stale": "Daten veraltet", "no_data": "Keine Daten", "transient": "Vorübergehender Fehler" } },
-      "display_version": { "name": "Version" }
+      "display_version": { "name": "Version" },
+      "display_settings_overrides": { "name": "Einstellungen aus dem Web-Interface" }
     },
     "binary_sensor": {
       "studying_now": { "name": "Lernt gerade" },
@@ -150,7 +151,24 @@
       "active_course": { "name": "Aktiver Kurs" },
       "display_layout": { "name": "Layout" },
       "display_duo_left": { "name": "Duo links" },
-      "display_duo_right": { "name": "Duo rechts" }
+      "display_duo_right": { "name": "Duo rechts" },
+      "display_language": { "name": "Sprache", "state": { "de": "Deutsch", "en": "English" } },
+      "display_rotation": { "name": "Drehung", "state": { "0": "0°", "180": "180°" } }
+    },
+    "text": {
+      "display_quiet_hours": { "name": "Ruhezeit" },
+      "display_clear_at": { "name": "Tägliche Reinigung um" },
+      "display_auto_review": { "name": "Automatik: Wochenrückblick-Fenster" },
+      "display_auto_agenda": { "name": "Automatik: Tagesplan-Fenster" },
+      "display_auto_tomorrow": { "name": "Automatik: Morgen-Fenster" },
+      "display_auto_quiet": { "name": "Automatik: Ruhe-Fenster" }
+    },
+    "switch": {
+      "display_update_check": { "name": "Auf neue Version prüfen" }
+    },
+    "button": {
+      "display_refresh": { "name": "Jetzt aktualisieren" },
+      "display_reset_settings": { "name": "Einstellungen zurücksetzen" }
     },
     "camera": {
       "current_frame": { "name": "Aktuelles Bild" }

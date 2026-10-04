@@ -92,7 +92,8 @@
       "display_shown_at": { "name": "Frame shown at" },
       "display_stale_minutes": { "name": "Data age" },
       "display_last_error": { "name": "Last error", "state": { "none": "None", "rejected": "API key rejected", "stale": "Data stale", "no_data": "No data", "transient": "Transient failure" } },
-      "display_version": { "name": "Version" }
+      "display_version": { "name": "Version" },
+      "display_settings_overrides": { "name": "Settings changed in the web interface" }
     },
     "binary_sensor": {
       "studying_now": { "name": "Studying now" },
@@ -113,7 +114,24 @@
       "active_course": { "name": "Active course" },
       "display_layout": { "name": "Layout" },
       "display_duo_left": { "name": "Duo left" },
-      "display_duo_right": { "name": "Duo right" }
+      "display_duo_right": { "name": "Duo right" },
+      "display_language": { "name": "Language", "state": { "de": "Deutsch", "en": "English" } },
+      "display_rotation": { "name": "Rotation", "state": { "0": "0°", "180": "180°" } }
+    },
+    "text": {
+      "display_quiet_hours": { "name": "Quiet hours" },
+      "display_clear_at": { "name": "Daily clear at" },
+      "display_auto_review": { "name": "Auto: weekly review window" },
+      "display_auto_agenda": { "name": "Auto: agenda window" },
+      "display_auto_tomorrow": { "name": "Auto: tomorrow window" },
+      "display_auto_quiet": { "name": "Auto: quiet window" }
+    },
+    "switch": {
+      "display_update_check": { "name": "Check for updates" }
+    },
+    "button": {
+      "display_refresh": { "name": "Refresh now" },
+      "display_reset_settings": { "name": "Reset settings" }
     },
     "camera": {
       "current_frame": { "name": "Current frame" }

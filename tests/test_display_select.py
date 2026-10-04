@@ -12,13 +12,17 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.studylife.display_api import DisplayApiError
+from custom_components.studylife.display_api import (
+    DisplayApiError,
+    DisplayApiNotFoundError,
+)
 
 from .conftest import (
     get_entity_id,
     make_raw_display_layout_option,
     make_raw_display_layouts,
     make_raw_display_layouts_legacy,
+    make_raw_display_settings,
     make_raw_display_state,
     setup_display_integration,
 )
@@ -274,3 +278,188 @@ async def test_no_duo_entities_when_the_display_reports_no_panes(
             )
             is None
         ), key
+
+
+# --------------------------------------------------------------------------
+# Settings selects: language and rotation
+# --------------------------------------------------------------------------
+
+
+async def test_language_and_rotation_selects_show_the_current_values(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    mock_display_api_client.async_get_settings.return_value = make_raw_display_settings(
+        language="en", rotation=180
+    )
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    language = _select_state(hass, mock_display_config_entry, "language")
+    rotation = _select_state(hass, mock_display_config_entry, "rotation")
+    assert language.state == "en"
+    assert language.attributes["options"] == ["de", "en"]
+    assert rotation.state == "180"
+    assert rotation.attributes["options"] == ["0", "180"]
+
+    registry = er.async_get(hass)
+    for key in ("language", "rotation"):
+        entity = registry.async_get(
+            get_entity_id(
+                hass, mock_display_config_entry.entry_id, key, platform="select"
+            )
+        )
+        assert entity is not None
+        assert entity.entity_category == EntityCategory.CONFIG
+        assert entity.translation_key == f"display_{key}"
+
+
+async def test_selecting_a_language_sends_the_key(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+    entity_id = get_entity_id(
+        hass, mock_display_config_entry.entry_id, "language", platform="select"
+    )
+    assert entity_id is not None
+
+    mock_display_api_client.async_get_state.reset_mock()
+    await hass.services.async_call(
+        "select",
+        "select_option",
+        {"entity_id": entity_id, "option": "en"},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    mock_display_api_client.async_update_settings.assert_awaited_once_with(
+        {"language": "en"}
+    )
+    mock_display_api_client.async_get_state.assert_awaited()
+
+
+async def test_selecting_a_rotation_sends_an_integer(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+    entity_id = get_entity_id(
+        hass, mock_display_config_entry.entry_id, "rotation", platform="select"
+    )
+    assert entity_id is not None
+
+    await hass.services.async_call(
+        "select",
+        "select_option",
+        {"entity_id": entity_id, "option": "180"},
+        blocking=True,
+    )
+
+    mock_display_api_client.async_update_settings.assert_awaited_once_with(
+        {"rotation": 180}
+    )
+    sent = mock_display_api_client.async_update_settings.await_args.args[0]
+    assert type(sent["rotation"]) is int
+
+
+@pytest.mark.parametrize("key", ["language", "rotation"])
+async def test_settings_select_rejected_by_the_display_surfaces_the_reason(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+    key: str,
+) -> None:
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+    entity_id = get_entity_id(
+        hass, mock_display_config_entry.entry_id, key, platform="select"
+    )
+    assert entity_id is not None
+    mock_display_api_client.async_update_settings.side_effect = DisplayApiError(
+        f"{key}: not allowed"
+    )
+
+    with pytest.raises(HomeAssistantError, match="not allowed"):
+        await hass.services.async_call(
+            "select",
+            "select_option",
+            {"entity_id": entity_id, "option": "en" if key == "language" else "180"},
+            blocking=True,
+        )
+
+
+@pytest.mark.parametrize("missing", ["language", "rotation"])
+async def test_settings_select_only_created_when_the_display_reports_the_key(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+    missing: str,
+) -> None:
+    document = make_raw_display_settings()
+    del document["values"][missing]
+    mock_display_api_client.async_get_settings.return_value = document
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    assert (
+        get_entity_id(
+            hass, mock_display_config_entry.entry_id, missing, platform="select"
+        )
+        is None
+    )
+    other = "rotation" if missing == "language" else "language"
+    assert (
+        get_entity_id(
+            hass, mock_display_config_entry.entry_id, other, platform="select"
+        )
+        is not None
+    )
+
+
+async def test_settings_selects_absent_on_an_old_display(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    mock_display_api_client.async_get_settings.side_effect = DisplayApiNotFoundError(
+        "404"
+    )
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    for key in ("language", "rotation"):
+        assert (
+            get_entity_id(
+                hass, mock_display_config_entry.entry_id, key, platform="select"
+            )
+            is None
+        )
+    # The layout select is unaffected.
+    assert _select_state(hass, mock_display_config_entry, "layout") is not None
+
+
+async def test_rotation_with_an_unexpected_value_is_unknown_not_an_error(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    mock_display_api_client.async_get_settings.return_value = make_raw_display_settings(
+        rotation=90
+    )
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    assert _select_state(hass, mock_display_config_entry, "rotation").state == "unknown"
