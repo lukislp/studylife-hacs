@@ -105,7 +105,7 @@ class DisplayApiClient:
                         "DISPLAY_API_TOKEN on the display matches what was entered here"
                     )
                 if response.status == 400:
-                    # A rejected value (e.g. an unknown layout key in a cycle list) -
+                    # A rejected value (e.g. an unknown layout key in the duo pair) -
                     # the display answers {"error": "<reason>"} and writes nothing, so
                     # surface that reason instead of a bare "400 Bad Request".
                     raise DisplayApiError(await _error_message(response))
@@ -131,16 +131,13 @@ class DisplayApiClient:
         self,
         layout: str,
         *,
-        cycle: list[str] | None = None,
         duo: list[str] | None = None,
     ) -> dict[str, Any]:
-        """POST /api/layout - saves the choice (and, when given, the cycle order and/or
-        the duo pair) and triggers an immediate panel refresh. `cycle` and `duo` are only
-        sent when passed, so a plain layout change leaves both untouched on the display;
-        older displays that don't know them never see the keys either."""
+        """POST /api/layout - saves the choice (and, when given, the duo pair) and
+        triggers an immediate panel refresh. `duo` is only sent when passed, so a plain
+        layout change leaves the pair untouched on the display; older displays that
+        don't know it never see the key either."""
         body: dict[str, Any] = {"layout": layout}
-        if cycle is not None:
-            body["cycle"] = cycle
         if duo is not None:
             body["duo"] = duo
         return await self._request("POST", "/api/layout", json=body)

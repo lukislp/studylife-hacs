@@ -13,7 +13,7 @@ Two kinds:
 - Diagnostic sensors (DISPLAY_DIAGNOSTIC_SENSOR_DESCRIPTIONS, EntityCategory.DIAGNOSTIC,
   so Home Assistant files them under the device's "Diagnostic" group): the health
   fields GET /api/state carries alongside the frame - status, resolved layout, frame
-  kind, shown-at, data age, last error, version - plus GET /api/layouts' next_in_cycle. Each is its own entity so it can be
+  kind, shown-at, data age, last error, version. Each is its own entity so it can be
   graphed, used in automation triggers and shown on dashboards individually, instead of
   being buried as attributes of the current-layout sensor (where they used to live).
   The two boolean health fields (quiet hours, sessions ok) are binary sensors - see
@@ -169,15 +169,6 @@ DISPLAY_DIAGNOSTIC_SENSOR_DESCRIPTIONS: tuple[
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_last_error_kind,
         attrs_fn=_last_error_attrs,
-    ),
-    StudyLifeDisplaySensorDescription(
-        # What "cycle" would draw on the next refresh (extended GET /api/layouts only;
-        # older displays don't report it and the sensor reads `unknown`).
-        key="next_in_cycle",
-        translation_key="display_next_in_cycle",
-        icon="mdi:skip-next",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda data: data.next_in_cycle,
     ),
     StudyLifeDisplaySensorDescription(
         key="version",

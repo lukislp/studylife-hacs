@@ -397,13 +397,12 @@ def make_raw_display_layout_option(
 
 
 def make_raw_display_pseudo_options() -> list[dict[str, Any]]:
-    """The two pseudo choices the extended GET /api/layouts lists ahead of the real
-    layouts."""
+    """The pseudo choice the extended GET /api/layouts lists ahead of the real
+    layouts - just "auto"."""
     return [
         make_raw_display_layout_option(
             key="auto", name_de="Automatisch", name_en="Automatic"
         ),
-        make_raw_display_layout_option(key="cycle", name_de="Wechsel", name_en="Cycle"),
     ]
 
 
@@ -413,14 +412,12 @@ def make_raw_display_layouts(
     resolved: str = "focus",
     options: list[dict[str, Any]] | None = None,
     pseudo: list[dict[str, Any]] | None = _UNSET,
-    cycle: list[str] | None = _UNSET,
     duo: list[str] | None = _UNSET,
     panes: list[str] | None = _UNSET,
-    next_in_cycle: str | None = _UNSET,
 ) -> dict[str, Any]:
     """Build a raw GET /api/layouts response, as display_coordinator.py's
     _parse_display_data expects to consume it. Defaults reflect a display with the
-    extended payload (pseudo choices, cycle, duo, panes, next_in_cycle); pass `None`
+    extended payload (pseudo choices, duo, panes); pass `None`
     for any of those to leave the key out entirely, the way an older display does -
     `make_raw_display_layouts_legacy` does that for all of them at once."""
     if options is None:
@@ -442,10 +439,8 @@ def make_raw_display_layouts(
     }
     extended: dict[str, Any] = {
         "pseudo": make_raw_display_pseudo_options() if pseudo is _UNSET else pseudo,
-        "cycle": ["classic", "week", "agenda", "review"] if cycle is _UNSET else cycle,
         "duo": ["focus", "agenda"] if duo is _UNSET else duo,
         "panes": [option["key"] for option in options] if panes is _UNSET else panes,
-        "next_in_cycle": "classic" if next_in_cycle is _UNSET else next_in_cycle,
     }
     payload.update({key: value for key, value in extended.items() if value is not None})
     return payload
@@ -457,17 +452,15 @@ def make_raw_display_layouts_legacy(
     resolved: str = "focus",
     options: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """GET /api/layouts as a display before the cycle/duo release returns it - just
+    """GET /api/layouts as a display before the duo release returns it - just
     choice, resolved and options, none of the extended keys."""
     return make_raw_display_layouts(
         choice=choice,
         resolved=resolved,
         options=options,
         pseudo=None,
-        cycle=None,
         duo=None,
         panes=None,
-        next_in_cycle=None,
     )
 
 

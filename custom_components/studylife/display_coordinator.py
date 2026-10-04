@@ -49,16 +49,14 @@ class DisplayData:
     current_frame_shown_at: datetime | None
     layout_options: list[LayoutOption]  # the real layouts, incl. "duo"
     # Everything below arrived with studylife-display's extended GET /api/layouts
-    # (cycle + duo). Older displays don't send these keys, so each has a fallback that
-    # reproduces the pre-extension behaviour: just "auto" as the one pseudo choice, and
-    # empty lists - display_select.py / display_text.py create the duo and cycle
-    # entities only when the display actually reports panes / a cycle.
-    # "auto", "cycle", ... - the choices that aren't layouts themselves.
+    # (the duo release). Older displays don't send these keys, so each has a fallback
+    # that reproduces the pre-extension behaviour: just "auto" as the one pseudo choice,
+    # and empty lists - display_select.py creates the duo entities only when the display
+    # actually reports panes.
+    # "auto", ... - the choices that aren't layouts themselves.
     pseudo_options: list[LayoutOption]
-    cycle: list[str]  # the configured cycle order, drawn one per refresh
     duo: list[str]  # the configured duo pair, left then right
     panes: list[str]  # the layouts that can be a duo half (every layout but "duo")
-    next_in_cycle: str | None  # what "cycle" would draw on the next refresh
 
 
 # What an older display (before the extended /api/layouts) implicitly offered: the one
@@ -119,10 +117,8 @@ def _parse_display_data(state: dict[str, Any], layouts: dict[str, Any]) -> Displ
         current_frame_shown_at=shown_at,
         layout_options=options,
         pseudo_options=pseudo,
-        cycle=_parse_keys(layouts.get("cycle")),
         duo=_parse_keys(layouts.get("duo")),
         panes=_parse_keys(layouts.get("panes")),
-        next_in_cycle=layouts.get("next_in_cycle") or None,
     )
 
 
