@@ -13,6 +13,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.studylife.api import StudyLifeApiError
 from custom_components.studylife.const import (
     CONF_DISPLAY_ID,
+    CONF_INSTANCE_ID,
     CONF_SCAN_INTERVAL,
     DOMAIN,
 )
@@ -292,3 +293,77 @@ async def test_display_without_id_leaves_entry_data_untouched(
     )
 
     assert CONF_DISPLAY_ID not in mock_display_config_entry.data
+
+
+# ---------------------------------------------------------------------------
+# Persisted server instance id
+# ---------------------------------------------------------------------------
+
+INSTANCE_ID = "0123456789abcdef0123456789abcdef"
+
+
+async def test_instance_id_is_fetched_stored_once_and_never_reloads(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_api_client: AsyncMock
+) -> None:
+    mock_api_client.async_get_instance.return_value = {
+        "id": INSTANCE_ID,
+        "version": "1.2.3",
+    }
+    mock_config_entry.add_to_hass(hass)
+    with (
+        patch.object(
+            hass.config_entries, "async_reload", AsyncMock(return_value=True)
+        ) as mock_reload,
+        patch(PATCH_TARGET, return_value=mock_api_client),
+    ):
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert mock_config_entry.data[CONF_INSTANCE_ID] == INSTANCE_ID
+    mock_reload.assert_not_called()
+    mock_api_client.async_get_instance.assert_awaited_once()
+
+
+async def test_instance_id_not_refetched_when_already_stored(
+    hass: HomeAssistant, mock_api_client: AsyncMock
+) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_URL: TEST_URL,
+            CONF_API_KEY: TEST_API_KEY,
+            CONF_INSTANCE_ID: INSTANCE_ID,
+        },
+        unique_id=TEST_URL,
+    )
+    entry.add_to_hass(hass)
+    with patch(PATCH_TARGET, return_value=mock_api_client):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+    mock_api_client.async_get_instance.assert_not_called()
+
+
+async def test_instance_id_fetch_failure_does_not_affect_setup(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_api_client: AsyncMock
+) -> None:
+    mock_api_client.async_get_instance.side_effect = RuntimeError("boom")
+    mock_config_entry.add_to_hass(hass)
+    with patch(PATCH_TARGET, return_value=mock_api_client):
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert mock_config_entry.state is ConfigEntryState.LOADED
+    assert CONF_INSTANCE_ID not in mock_config_entry.data
+
+
+async def test_instance_id_absent_on_older_server_stores_nothing(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry, mock_api_client: AsyncMock
+) -> None:
+    mock_config_entry.add_to_hass(hass)
+    with patch(PATCH_TARGET, return_value=mock_api_client):
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+    assert mock_config_entry.state is ConfigEntryState.LOADED
+    assert CONF_INSTANCE_ID not in mock_config_entry.data

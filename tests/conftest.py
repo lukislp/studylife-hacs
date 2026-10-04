@@ -54,6 +54,8 @@ def mock_api_client() -> AsyncMock:
     client = AsyncMock()
     client.base_url = TEST_URL
     client.api_key = TEST_API_KEY
+    # Default: an older server without GET /api/instance (no stable id to persist).
+    client.async_get_instance.return_value = None
     client.async_get_sessions.return_value = []
     client.async_get_session_history.return_value = []
     client.async_get_settings.return_value = {}

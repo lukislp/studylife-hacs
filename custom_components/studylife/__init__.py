@@ -18,6 +18,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import StudyLifeApiClient
 from .const import (
     CONF_ENTRY_TYPE,
+    CONF_INSTANCE_ID,
     CONF_SCAN_INTERVAL,
     DEFAULT_DISPLAY_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
@@ -29,6 +30,7 @@ from .coordinator import StudyLifeCoordinator
 from .display_api import DisplayApiClient
 from .display_coordinator import DisplayCoordinator
 from .display_repairs import async_delete_display_issues
+from .instance import async_fetch_and_store_instance_id
 from .services import (
     SERVICE_CREATE_SESSION,
     SERVICE_DELETE_SESSION,
@@ -84,6 +86,15 @@ async def _async_setup_account_entry(hass: HomeAssistant, entry: ConfigEntry) ->
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
+    if not entry.data.get(CONF_INSTANCE_ID):
+        # In the background and after the first refresh: learning the id must never delay
+        # or fail setup. Nothing is stored when the fetch fails, so the next setup retries.
+        entry.async_create_background_task(
+            hass,
+            async_fetch_and_store_instance_id(hass, entry, client),
+            f"{DOMAIN}_fetch_instance_id_{entry.entry_id}",
+        )
+
     await async_register_services(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS_ACCOUNT)
     return True
@@ -132,6 +143,8 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
                 and coordinator.update_interval == timedelta(seconds=scan_interval)
             )
         else:
+            # Same on purpose: the stable instance id (CONF_INSTANCE_ID) is written into
+            # the entry data after setup and must not reload the entry.
             unchanged = (
                 coordinator.client.base_url == entry.data[CONF_URL]
                 and coordinator.client.api_key == entry.data.get(CONF_API_KEY)

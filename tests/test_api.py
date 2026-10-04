@@ -553,3 +553,83 @@ def test_base_url_and_api_key_properties(
     assert client.base_url == BASE_URL
     assert client.api_key == API_KEY
     assert client_no_key.api_key is None
+
+
+# --------------------------------------------------------------------------
+# GET /api/instance
+# --------------------------------------------------------------------------
+
+INSTANCE_ID = "0123456789abcdef0123456789abcdef"
+
+
+async def test_get_instance_returns_id_and_version(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(
+            f"{BASE_URL}/api/instance", payload={"id": INSTANCE_ID, "version": "1.2.3"}
+        )
+        assert await client.async_get_instance() == {
+            "id": INSTANCE_ID,
+            "version": "1.2.3",
+        }
+
+
+async def test_get_instance_works_without_api_key(
+    client_no_key: StudyLifeApiClient,
+) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/instance", payload={"id": INSTANCE_ID})
+        assert (await client_no_key.async_get_instance())["id"] == INSTANCE_ID
+
+
+async def test_get_instance_404_is_none(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/instance", status=404)
+        assert await client.async_get_instance() is None
+
+
+async def test_get_instance_server_error_is_none(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/instance", status=500)
+        assert await client.async_get_instance() is None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"id": INSTANCE_ID.upper(), "version": "1"},
+        {"id": INSTANCE_ID[:31]},
+        {"id": INSTANCE_ID + "0"},
+        {"id": "g" * 32},
+        {"id": 123},
+        {"version": "1.0.0"},
+        ["not", "an", "object"],
+    ],
+)
+async def test_get_instance_invalid_id_is_none(
+    client: StudyLifeApiClient, payload: object
+) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/instance", payload=payload)
+        assert await client.async_get_instance() is None
+
+
+async def test_get_instance_malformed_json_is_none(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(
+            f"{BASE_URL}/api/instance",
+            body="<html>nope</html>",
+            content_type="text/html",
+        )
+        assert await client.async_get_instance() is None
+
+
+async def test_get_instance_network_error_is_none(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/instance", exception=aiohttp.ClientConnectionError())
+        assert await client.async_get_instance() is None
+
+
+async def test_get_instance_timeout_is_none(client: StudyLifeApiClient) -> None:
+    with aioresponses() as m:
+        m.get(f"{BASE_URL}/api/instance", exception=asyncio.TimeoutError())
+        assert await client.async_get_instance() is None

@@ -16,6 +16,10 @@ CONF_SCAN_INTERVAL = "scan_interval"
 # The display's stable id (studylife-display >= the release that publishes it), kept in
 # the entry data so discovery can recognise the display even when the entry is not loaded.
 CONF_DISPLAY_ID = "display_id"
+# The StudyLife server's stable instance id (GET /api/instance, also the TXT "id" of its
+# mDNS announcement), kept in the account entry data so discovery recognises an already
+# configured server whatever URL it is configured or announced under.
+CONF_INSTANCE_ID = "instance_id"
 DEFAULT_SCAN_INTERVAL = 30  # seconds, matches AppStateService's own poll interval
 # studylife-display's own scheduled refresh is every 5 minutes; polling its JSON API
 # faster than that would only ever re-read the same cached state.
