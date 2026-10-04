@@ -91,6 +91,26 @@ just picked. Older displays simply get no duo entities - nothing else changes fo
 |---|---|---|
 | `select.<display>_duo_left` / `select.<display>_duo_right` | Select | The two halves of the `duo` layout, each pickable from the display's `panes` (every layout but `duo` itself). Changing one re-sends the current layout choice together with the new pair, so editing the pair never switches the display to `duo` by itself - pick `duo` in the layout select for that. Only created when the display reports `panes`. |
 
+Displays running **studylife-display 1.11 or newer** (`GET /api/settings`) make every one
+of their settings controllable from Home Assistant, plus a refresh button. Each entity is
+created only when the display reports its key, so older displays simply get fewer entities
+(very old ones just the refresh button and the entities above). The values are the same
+ones as on the display's own settings page: a value written here lands in the display's
+`settings.json`, which takes precedence over its environment file. Writing an invalid
+value fails with the display's own reason and changes nothing.
+
+| Entity | Type | Meaning |
+|---|---|---|
+| `button.<display>_refresh` | Button | Redraws the panel now (`POST /api/refresh`); fails when the display could not refresh. Always created. |
+| `select.<display>_language` | Select (config) | Display language, `de` or `en`. |
+| `select.<display>_rotation` | Select (config) | Panel rotation, `0°` or `180°`. |
+| `text.<display>_quiet_hours` | Text (config) | Quiet-hours window, e.g. `23-7`; empty switches it off. |
+| `text.<display>_clear_at` | Text (config) | Time of the daily full clear, e.g. `04:00`; empty switches it off. |
+| `text.<display>_auto_review` / `_auto_agenda` / `_auto_tomorrow` / `_auto_quiet` | Text (config) | The automatic layout windows (weekly review, agenda, tomorrow, quiet) as `[weekdays] HH-HH` or `HH:MM-HH:MM`, e.g. `sun 18-24`; empty switches the rule off. |
+| `switch.<display>_update_check` | Switch (config) | Whether the display checks for a new studylife-display version. |
+| `button.<display>_reset_settings` | Button (config) | Removes every override from `settings.json` except the layout choice (`POST /api/settings/reset`). |
+| `sensor.<display>_settings_overrides` | Sensor (diagnostic) | How many settings currently come from the web interface's `settings.json` rather than the environment. |
+
 Poll interval defaults to 60s (studylife-display's own scheduled refresh is every 5
 minutes; polling faster would only re-read the same cached state) and is adjustable the
 same way as an account entry's, via **Configure**.
