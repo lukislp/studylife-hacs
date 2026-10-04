@@ -10,6 +10,7 @@ display_entity.py) - "add a display" can be run again for a second, third, ... p
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlsplit
@@ -28,6 +29,7 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .api import StudyLifeApiAuthError, StudyLifeApiClient, StudyLifeApiError
 from .const import (
+    CONF_DISPLAY_ID,
     CONF_ENTRY_TYPE,
     CONF_SCAN_INTERVAL,
     DEFAULT_DISPLAY_SCAN_INTERVAL,
@@ -37,6 +39,9 @@ from .const import (
     ENTRY_TYPE_DISPLAY,
 )
 from .display_api import DisplayApiAuthError, DisplayApiClient, DisplayApiError
+from .display_coordinator import DisplayCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 # API key is required since the server's phase-3 auth rework: every /api endpoint needs
 # either a passkey session (browser only) or a per-user API key - there is nothing Home
@@ -322,6 +327,27 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
         host = discovery_info.hostname.rstrip(".") or str(discovery_info.ip_address)
         port = discovery_info.port or 8795
         url = _normalize_url(f"{'https' if tls else 'http'}://{host}:{port}")
+        announced_id = str(properties.get("id") or "").strip() or None
+        _LOGGER.debug(
+            "Display discovery: name=%s hostname=%s port=%s ip_addresses=%s "
+            "properties=%s url=%s",
+            discovery_info.name,
+            discovery_info.hostname,
+            port,
+            [str(ip) for ip in discovery_info.ip_addresses],
+            dict(properties),
+            url,
+        )
+
+        # Address-independent identity first: a display that publishes its stable id
+        # (TXT "id") is the same display as an entry holding that id, whatever address
+        # or name it announces now. The id is read from the entry data, or - for an
+        # entry that has not stored it yet (not polled since the update) - from its
+        # loaded coordinator. A changed address is deliberately NOT written into the
+        # entry silently (the user can reconfigure it); we only avoid offering the
+        # display a second time.
+        if announced_id and self._matches_configured_display(announced_id):
+            return self.async_abort(reason="already_configured")
 
         # Same unique_id scheme as the manual display step (the normalized URL), so a
         # manually added display is recognised; a changed address updates its URL.
@@ -339,6 +365,12 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
             # it the way the manual step does before taking the host part.
             stored_url = _normalize_url(str(entry.data.get(CONF_URL, "")))
             entry_host = (urlsplit(stored_url).hostname or "").lower()
+            _LOGGER.debug(
+                "Display discovery: entry %s stored host=%s matched by host=%s",
+                entry.entry_id,
+                entry_host,
+                entry_host in known_hosts,
+            )
             if entry_host in known_hosts:
                 return self.async_abort(reason="already_configured")
 
@@ -351,6 +383,33 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
             "name": _display_title_from_flow_name(discovery_info.name)
         }
         return await self.async_step_zeroconf_confirm()
+
+    def _matches_configured_display(self, announced_id: str) -> bool:
+        """True when a display entry already has this stable id (stored or live)."""
+        loaded = self.hass.data.get(DOMAIN, {})
+        for entry in self._async_current_entries(include_ignore=False):
+            if _entry_type(entry) != ENTRY_TYPE_DISPLAY:
+                continue
+            coordinator = loaded.get(entry.entry_id)
+            live_id = (
+                coordinator.data.display_id
+                if isinstance(coordinator, DisplayCoordinator) and coordinator.data
+                else None
+            )
+            by_stored = entry.data.get(CONF_DISPLAY_ID) == announced_id
+            by_live = live_id == announced_id
+            _LOGGER.debug(
+                "Display discovery: entry %s stored host=%s stored id=%s "
+                "live id=%s matched by id=%s",
+                entry.entry_id,
+                urlsplit(_normalize_url(str(entry.data.get(CONF_URL, "")))).hostname,
+                entry.data.get(CONF_DISPLAY_ID),
+                live_id,
+                by_stored or by_live,
+            )
+            if by_stored or by_live:
+                return True
+        return False
 
     async def async_step_zeroconf_confirm(
         self, user_input: dict[str, Any] | None = None

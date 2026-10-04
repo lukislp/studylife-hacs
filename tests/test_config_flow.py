@@ -3,8 +3,10 @@ options)."""
 
 from __future__ import annotations
 
+from datetime import timedelta
 from ipaddress import ip_address
-from unittest.mock import patch
+from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import voluptuous as vol
@@ -25,8 +27,19 @@ from custom_components.studylife.const import (
     ENTRY_TYPE_DISPLAY,
 )
 from custom_components.studylife.display_api import DisplayApiAuthError, DisplayApiError
+from custom_components.studylife.display_coordinator import (
+    DisplayCoordinator,
+    _parse_display_data,
+)
 
-from .conftest import TEST_API_KEY, TEST_DISPLAY_TOKEN, TEST_DISPLAY_URL, TEST_URL
+from .conftest import (
+    TEST_API_KEY,
+    TEST_DISPLAY_TOKEN,
+    TEST_DISPLAY_URL,
+    TEST_URL,
+    make_raw_display_layouts,
+    make_raw_display_state,
+)
 
 PATCH_TARGET = (
     "custom_components.studylife.config_flow.StudyLifeApiClient.async_test_connection"
@@ -590,15 +603,20 @@ def _zeroconf_info(
     port: int = 8795,
     tls: str = "false",
     api: str = "true",
+    display_id: str | None = None,
+    ips: list[str] | None = None,
 ) -> ZeroconfServiceInfo:
+    properties = {"version": "1.12.0", "tls": tls, "api": api, "path": "/"}
+    if display_id is not None:
+        properties["id"] = display_id
     return ZeroconfServiceInfo(
         ip_address=ip_address(ip),
-        ip_addresses=[ip_address(ip)],
+        ip_addresses=[ip_address(addr) for addr in (ips or [ip])],
         port=port,
         hostname=hostname,
         type="_studylife-display._tcp.local.",
         name="StudyLife Display (studylife-display)._studylife-display._tcp.local.",
-        properties={"version": "1.12.0", "tls": tls, "api": api, "path": "/"},
+        properties=properties,
     )
 
 
@@ -782,3 +800,89 @@ async def test_zeroconf_falls_back_to_ip_without_hostname(hass: HomeAssistant) -
     result = await _start_zeroconf_flow(hass, _zeroconf_info(hostname="."))
 
     assert result["description_placeholders"] == {"url": "http://192.168.1.50:8795"}
+
+
+# --- discovery by the display's stable id ----------------------------------
+
+DISPLAY_ID = "0123456789abcdef"
+
+
+def _display_entry(url: str = "https://10.0.0.5:8795", **extra: Any) -> MockConfigEntry:
+    return MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_URL: url,
+            CONF_API_TOKEN: TEST_DISPLAY_TOKEN,
+            CONF_VERIFY_SSL: False,
+            CONF_ENTRY_TYPE: ENTRY_TYPE_DISPLAY,
+            **extra,
+        },
+        unique_id=url,
+    )
+
+
+async def test_zeroconf_stored_display_id_aborts_despite_different_host(
+    hass: HomeAssistant,
+) -> None:
+    _display_entry(display_id=DISPLAY_ID).add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(
+        hass, _zeroconf_info(display_id=DISPLAY_ID, ips=["192.168.1.50", "fe80::1"])
+    )
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_zeroconf_loaded_coordinator_id_aborts_without_stored_id(
+    hass: HomeAssistant,
+) -> None:
+    entry = _display_entry()
+    entry.add_to_hass(hass)
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = DisplayCoordinator(
+        hass, AsyncMock(), timedelta(seconds=60)
+    )
+    hass.data[DOMAIN][entry.entry_id].data = _parse_display_data(
+        make_raw_display_state(display_id=DISPLAY_ID), make_raw_display_layouts()
+    )
+
+    result = await _start_zeroconf_flow(hass, _zeroconf_info(display_id=DISPLAY_ID))
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_zeroconf_different_id_and_host_offers_the_display(
+    hass: HomeAssistant,
+) -> None:
+    _display_entry(display_id="ffffffffffffffff").add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _zeroconf_info(display_id=DISPLAY_ID))
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "zeroconf_confirm"
+
+
+async def test_zeroconf_without_id_falls_back_to_host_checks(
+    hass: HomeAssistant,
+) -> None:
+    """An old display (no TXT id) is still recognised by host, and offered otherwise."""
+    _display_entry("http://192.168.1.50:8795").add_to_hass(hass)
+    result = await _start_zeroconf_flow(hass, _zeroconf_info())
+    assert result["type"] == FlowResultType.ABORT
+
+    other = await _start_zeroconf_flow(
+        hass, _zeroconf_info(hostname="other.local.", ip="192.168.9.9")
+    )
+    assert other["type"] == FlowResultType.FORM
+
+
+async def test_zeroconf_entry_without_stored_id_or_coordinator_falls_back_to_host(
+    hass: HomeAssistant,
+) -> None:
+    _display_entry("http://192.168.1.50:8795").add_to_hass(hass)
+
+    result = await _start_zeroconf_flow(hass, _zeroconf_info(display_id=DISPLAY_ID))
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
