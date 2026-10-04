@@ -16,6 +16,7 @@ from custom_components.studylife.display_api import DisplayApiError
 
 from .conftest import (
     get_entity_id,
+    make_raw_display_layout_option,
     make_raw_display_layouts,
     make_raw_display_layouts_legacy,
     make_raw_display_state,
@@ -48,7 +49,32 @@ async def test_options_are_the_pseudo_choices_then_every_layout_key(
     state = _select_state(hass, mock_display_config_entry, "layout")
     # Order matters: pseudo choices first (as the display's own UI lists them), then
     # the real layouts in the display's order.
-    assert state.attributes["options"] == ["auto", "cycle", "classic", "focus", "exam"]
+    assert state.attributes["options"] == ["auto", "classic", "focus", "exam"]
+
+
+async def test_every_pseudo_choice_the_display_offers_is_listed(
+    hass: HomeAssistant,
+    mock_display_config_entry: MockConfigEntry,
+    mock_display_api_client: AsyncMock,
+) -> None:
+    """The pseudo choices come straight off the wire - a display offering a second one
+    gets it listed ahead of the real layouts without the integration knowing its key."""
+    mock_display_api_client.async_get_layouts.return_value = make_raw_display_layouts(
+        pseudo=[
+            make_raw_display_layout_option(
+                key="auto", name_de="Automatisch", name_en="Automatic"
+            ),
+            make_raw_display_layout_option(
+                key="other", name_de="Anderes", name_en="Other"
+            ),
+        ]
+    )
+    await setup_display_integration(
+        hass, mock_display_config_entry, mock_display_api_client
+    )
+
+    state = _select_state(hass, mock_display_config_entry, "layout")
+    assert state.attributes["options"] == ["auto", "other", "classic", "focus", "exam"]
 
 
 async def test_legacy_display_falls_back_to_auto_plus_layout_keys(
@@ -56,7 +82,7 @@ async def test_legacy_display_falls_back_to_auto_plus_layout_keys(
     mock_display_config_entry: MockConfigEntry,
     mock_display_api_client: AsyncMock,
 ) -> None:
-    """A display before the cycle/duo release sends only choice/resolved/options -
+    """A display before the duo release sends only choice/resolved/options -
     the layout select must look exactly as it did before, and no duo entities appear."""
     mock_display_api_client.async_get_layouts.return_value = (
         make_raw_display_layouts_legacy()
@@ -97,24 +123,6 @@ async def test_current_option_is_the_persisted_choice(
     assert _select_state(hass, mock_display_config_entry, "layout").state == "classic"
 
 
-async def test_cycle_is_a_selectable_choice(
-    hass: HomeAssistant,
-    mock_display_config_entry: MockConfigEntry,
-    mock_display_api_client: AsyncMock,
-) -> None:
-    mock_display_api_client.async_get_state.return_value = make_raw_display_state(
-        layout_choice="cycle"
-    )
-    mock_display_api_client.async_get_layouts.return_value = make_raw_display_layouts(
-        choice="cycle"
-    )
-    await setup_display_integration(
-        hass, mock_display_config_entry, mock_display_api_client
-    )
-
-    assert _select_state(hass, mock_display_config_entry, "layout").state == "cycle"
-
-
 async def test_selecting_an_option_calls_set_layout_and_refreshes(
     hass: HomeAssistant,
     mock_display_config_entry: MockConfigEntry,
@@ -137,9 +145,9 @@ async def test_selecting_an_option_calls_set_layout_and_refreshes(
     )
     await hass.async_block_till_done()
 
-    # A plain layout change sends neither cycle nor duo - both stay as they are.
+    # A plain layout change sends no duo pair - it stays as it is.
     mock_display_api_client.async_set_layout.assert_awaited_once_with("exam")
-    # async_request_refresh triggers another poll cycle.
+    # async_request_refresh triggers another poll.
     mock_display_api_client.async_get_state.assert_awaited()
 
 

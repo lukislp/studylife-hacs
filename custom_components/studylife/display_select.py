@@ -8,8 +8,8 @@ Assistant right away instead of waiting for the next poll.
 
 Three selects:
 
-- "layout": the persisted choice - every pseudo choice GET /api/layouts offers ("auto",
-  and "cycle" on displays that have it) followed by every real layout key.
+- "layout": the persisted choice - every pseudo choice GET /api/layouts offers ("auto")
+  followed by every real layout key.
 - "duo_left" / "duo_right" (EntityCategory.CONFIG): the two halves of the "duo" layout,
   each pickable from the display's `panes` list. Only created when the display reports
   panes at all - older displays (before the extended /api/layouts) don't, and get no duo
