@@ -48,6 +48,7 @@ PLATFORMS_DISPLAY: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.SELECT,
+    Platform.TEXT,
     Platform.CAMERA,
 ]
 
