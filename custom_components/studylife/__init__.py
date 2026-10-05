@@ -52,6 +52,7 @@ PLATFORMS_DISPLAY: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.SELECT,
     Platform.TEXT,
+    Platform.NUMBER,
     Platform.SWITCH,
     Platform.BUTTON,
     Platform.CAMERA,
