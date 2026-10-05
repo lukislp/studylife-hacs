@@ -188,6 +188,10 @@
       "display_auto_tomorrow": { "name": "Automatik: Morgen-Fenster" },
       "display_auto_quiet": { "name": "Automatik: Ruhe-Fenster" }
     },
+    "number": {
+      "display_auto_recap_minutes": { "name": "Automatik: Abschluss nach einer Session" },
+      "display_redraw_after_minutes": { "name": "Unveränderten Frame neu zeichnen nach" }
+    },
     "switch": {
       "display_update_check": { "name": "Auf neue Version prüfen" }
     },

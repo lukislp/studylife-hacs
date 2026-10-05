@@ -151,6 +151,10 @@
       "display_auto_tomorrow": { "name": "Auto: tomorrow window" },
       "display_auto_quiet": { "name": "Auto: quiet window" }
     },
+    "number": {
+      "display_auto_recap_minutes": { "name": "Auto: recap after a session" },
+      "display_redraw_after_minutes": { "name": "Redraw unchanged frame after" }
+    },
     "switch": {
       "display_update_check": { "name": "Check for updates" }
     },

@@ -476,7 +476,8 @@ def make_raw_display_settings(
     """Build a raw GET /api/settings response (studylife-display >= 1.11). Keyword
     arguments override single values; pass `sources=` to say which keys come from
     settings.json (everything else reports False). To model an older display that lacks
-    a key, build the dict and `del doc["values"][key]`."""
+    a key, pass `key=None` (the key is then omitted entirely, like on a real older
+    display) or build the dict and `del doc["values"][key]`."""
     values: dict[str, Any] = {
         "language": "de",
         "rotation": 0,
@@ -488,8 +489,13 @@ def make_raw_display_settings(
         "auto_tomorrow": "18-23",
         "auto_quiet": "",
         "duo": "degree,agenda",
+        "auto_recap_minutes": 10,
+        "redraw_after_minutes": 60,
+        "skip_unchanged": True,
     }
     values.update(overrides)
+    # An explicit None models "the display does not report this key".
+    values = {key: value for key, value in values.items() if value is not None}
     return {
         "values": values,
         "sources": {key: (sources or {}).get(key, False) for key in values},
