@@ -128,8 +128,13 @@ value fails with the display's own reason and changes nothing.
 | `text.<display>_clear_at` | Text (config) | Time of the daily full clear, e.g. `04:00`; empty switches it off. |
 | `text.<display>_auto_review` / `_auto_agenda` / `_auto_tomorrow` / `_auto_quiet` | Text (config) | The automatic layout windows (weekly review, agenda, tomorrow, quiet) as `[weekdays] HH-HH` or `HH:MM-HH:MM`, e.g. `sun 18-24`; empty switches the rule off. |
 | `switch.<display>_update_check` | Switch (config) | Whether the display checks for a new studylife-display version. |
+| `number.<display>_auto_recap_minutes` | Number (config) | Minutes after a finished study session before the display shows the recap; `0` switches it off (0-240). |
+| `number.<display>_redraw_after_minutes` | Number (config) | Redraw an unchanged frame once it is this many minutes old; `0` means no age-based redraw (0-1440). |
+| `switch.<display>_skip_unchanged` | Switch (config) | Whether the display skips redrawing a frame identical to the one already shown. |
 | `button.<display>_reset_settings` | Button (config) | Removes every override from `settings.json` except the layout choice (`POST /api/settings/reset`). |
 | `sensor.<display>_settings_overrides` | Sensor (diagnostic) | How many settings currently come from the web interface's `settings.json` rather than the environment. |
+
+The `redraw_after_minutes` and `skip_unchanged` entities need a studylife-display release that reports those settings; `auto_recap_minutes` needs 1.12 or newer. Older displays simply get fewer entities.
 
 Poll interval defaults to 60s (studylife-display's own scheduled refresh is every 5
 minutes; polling faster would only re-read the same cached state) and is adjustable the
