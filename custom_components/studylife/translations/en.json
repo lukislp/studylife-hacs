@@ -193,7 +193,8 @@
       "display_redraw_after_minutes": { "name": "Redraw unchanged frame after" }
     },
     "switch": {
-      "display_update_check": { "name": "Check for updates" }
+      "display_update_check": { "name": "Check for updates" },
+      "display_skip_unchanged": { "name": "Skip unchanged frames" }
     },
     "button": {
       "display_refresh": { "name": "Refresh now" },

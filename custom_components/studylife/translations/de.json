@@ -193,7 +193,8 @@
       "display_redraw_after_minutes": { "name": "Unveränderten Frame neu zeichnen nach" }
     },
     "switch": {
-      "display_update_check": { "name": "Auf neue Version prüfen" }
+      "display_update_check": { "name": "Auf neue Version prüfen" },
+      "display_skip_unchanged": { "name": "Unveränderte Frames überspringen" }
     },
     "button": {
       "display_refresh": { "name": "Jetzt aktualisieren" },
