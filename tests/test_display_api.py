@@ -6,7 +6,6 @@ mirrors test_api.py's own approach for the StudyLife account client.
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
 
 import aiohttp
@@ -191,7 +190,7 @@ async def test_timeout_raises_display_api_error(
     client: DisplayApiClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     async def _raise_timeout(*args: object, **kwargs: object) -> None:
-        raise asyncio.TimeoutError
+        raise TimeoutError
 
     monkeypatch.setattr(client._session, "request", _raise_timeout)
     with pytest.raises(DisplayApiError, match="Timeout"):

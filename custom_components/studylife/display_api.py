@@ -119,7 +119,7 @@ class DisplayApiClient:
                 if response.status not in ok_statuses:
                     response.raise_for_status()
                 return await response.json()
-        except asyncio.TimeoutError as err:
+        except TimeoutError as err:
             raise DisplayApiError(f"Timeout fetching {url}") from err
         except aiohttp.ClientError as err:
             raise DisplayApiError(f"Error fetching {url}: {err}") from err
@@ -189,7 +189,7 @@ class DisplayApiClient:
                     )
                 response.raise_for_status()
                 return await response.read()
-        except asyncio.TimeoutError as err:
+        except TimeoutError as err:
             raise DisplayApiError(f"Timeout fetching {url}") from err
         except aiohttp.ClientError as err:
             raise DisplayApiError(f"Error fetching {url}: {err}") from err

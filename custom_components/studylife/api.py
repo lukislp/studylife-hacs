@@ -183,7 +183,7 @@ class StudyLifeApiClient:
                         # Server (no longer) sends an ETag for this path - drop any stale entry.
                         self._etag_cache.pop(path, None)
                 return body
-        except asyncio.TimeoutError as err:
+        except TimeoutError as err:
             raise StudyLifeApiError(f"Timeout fetching {url}") from err
         except aiohttp.ClientError as err:
             raise StudyLifeApiError(f"Error fetching {url}: {err}") from err
