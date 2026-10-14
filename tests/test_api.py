@@ -7,7 +7,6 @@ mirroring the fact that api.py itself has zero HA imports.
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
 
 import aiohttp
@@ -380,7 +379,7 @@ async def test_connection_error_raises_api_error(client: StudyLifeApiClient) -> 
 
 async def test_timeout_raises_api_error(client: StudyLifeApiClient) -> None:
     with aioresponses() as m:
-        m.get(f"{BASE_URL}/api/settings", exception=asyncio.TimeoutError())
+        m.get(f"{BASE_URL}/api/settings", exception=TimeoutError())
         with pytest.raises(StudyLifeApiError):
             await client.async_get_settings()
 
@@ -631,5 +630,5 @@ async def test_get_instance_network_error_is_none(client: StudyLifeApiClient) ->
 
 async def test_get_instance_timeout_is_none(client: StudyLifeApiClient) -> None:
     with aioresponses() as m:
-        m.get(f"{BASE_URL}/api/instance", exception=asyncio.TimeoutError())
+        m.get(f"{BASE_URL}/api/instance", exception=TimeoutError())
         assert await client.async_get_instance() is None
