@@ -15,7 +15,7 @@ timezone.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
@@ -70,7 +70,7 @@ def _naive(*args: int) -> datetime:
     isn't `dt_util.now() +/- timedelta`-relative like the `.event` tests
     because these particular assertions are about fixed calendar-day window
     boundaries, not "now"."""
-    return datetime(*args, tzinfo=timezone.utc).replace(tzinfo=None)
+    return datetime(*args, tzinfo=UTC).replace(tzinfo=None)
 
 
 # ---------------------------------------------------------------------------
