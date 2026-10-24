@@ -176,8 +176,10 @@ def _resolve_coordinator(
                 translation_key="unknown_device",
                 translation_placeholders={"device_id": device_id},
             )
-        entry_id = next((eid for eid in device.config_entries if eid in entries), None)
-        if entry_id is None:
+        # A device belongs to exactly one config entry since HA 2026.8;
+        # DeviceEntry.config_entries is deprecated (removed in 2027.10).
+        entry_id = device.config_entry_id
+        if entry_id not in entries:
             raise HomeAssistantError(
                 translation_domain=DOMAIN, translation_key="device_not_studylife"
             )

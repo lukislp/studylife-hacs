@@ -30,6 +30,7 @@ from .coordinator import StudyLifeCoordinator
 from .display_api import DisplayApiClient
 from .display_coordinator import DisplayCoordinator
 from .display_repairs import async_delete_display_issues
+from .entity import async_register_hub_device
 from .instance import async_fetch_and_store_instance_id
 from .services import (
     SERVICE_CREATE_SESSION,
@@ -95,6 +96,10 @@ async def _async_setup_account_entry(hass: HomeAssistant, entry: ConfigEntry) ->
             async_fetch_and_store_instance_id(hass, entry, client),
             f"{DOMAIN}_fetch_instance_id_{entry.entry_id}",
         )
+
+    # Registered up front so programme devices can reference the hub by device id
+    # (via_device_id) no matter which platform adds its entities first.
+    coordinator.hub_device_id = async_register_hub_device(hass, entry)
 
     await async_register_services(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS_ACCOUNT)
