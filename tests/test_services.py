@@ -853,7 +853,9 @@ async def test_resolve_coordinator_device_not_studylife(
 
 
 async def test_resolve_coordinator_device_id_resolves_matching_entry(
-    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
@@ -876,3 +878,6 @@ async def test_resolve_coordinator_device_id_resolves_matching_entry(
 
     client.async_delete_session.assert_awaited_once_with(1)
     coordinator.async_request_refresh.assert_awaited_once()
+    # Resolved via DeviceEntry.config_entry_id, not the deprecated (HA 2027.10)
+    # DeviceEntry.config_entries.
+    assert "DeviceEntry.config_entries" not in caplog.text

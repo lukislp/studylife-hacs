@@ -518,6 +518,9 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
         # Completed-week id seen in the previous refresh cycle; None until the
         # first refresh of this HA runtime (see the event-firing block below).
         self._last_report_week_id: str | None = None
+        # Device registry id of the per-entry hub device, set in __init__.py before
+        # the platforms are set up; programme devices link to it via via_device_id.
+        self.hub_device_id: str | None = None
 
     @property
     def client(self) -> StudyLifeApiClient:

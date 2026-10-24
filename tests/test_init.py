@@ -3,11 +3,14 @@
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.studylife.api import StudyLifeApiError
@@ -30,7 +33,9 @@ from .conftest import (
     TEST_API_KEY,
     TEST_URL,
     make_raw_display_state,
+    make_raw_study_program,
     setup_display_integration,
+    setup_integration,
 )
 
 # custom_components/studylife/__init__.py imports StudyLifeApiClient into its own
@@ -367,3 +372,103 @@ async def test_instance_id_absent_on_older_server_stores_nothing(
 
     assert mock_config_entry.state is ConfigEntryState.LOADED
     assert CONF_INSTANCE_ID not in mock_config_entry.data
+
+
+# ---------------------------------------------------------------------------
+# Device hierarchy: programme devices hang off the hub via via_device_id
+# ---------------------------------------------------------------------------
+
+
+def _assert_no_device_registry_deprecation(caplog: pytest.LogCaptureFixture) -> None:
+    """HA reports deprecated async_get_or_create parameters (e.g. `via_device`,
+    removed in 2027.8) via helpers.frame.report_usage as a WARNING."""
+    deprecations = [
+        record.getMessage()
+        for record in caplog.records
+        if record.levelno >= logging.WARNING and "deprecated" in record.getMessage()
+    ]
+    assert deprecations == []
+
+
+async def test_programme_devices_link_to_hub_by_device_id(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_api_client: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Every programme device - including one discovered on a later poll - is a
+    child of the hub device, and setup emits no device registry deprecation."""
+    mock_api_client.async_get_study_programs.return_value = [
+        make_raw_study_program(id=None, name="Bachelor", is_built_in=True),
+        make_raw_study_program(id=7, name="Master", is_built_in=False),
+    ]
+    coordinator = await setup_integration(hass, mock_config_entry, mock_api_client)
+
+    mock_api_client.async_get_study_programs.return_value = [
+        make_raw_study_program(id=None, name="Bachelor", is_built_in=True),
+        make_raw_study_program(id=7, name="Master", is_built_in=False),
+        make_raw_study_program(id=9, name="Later", is_built_in=False),
+    ]
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    device_registry = dr.async_get(hass)
+    entry_id = mock_config_entry.entry_id
+    hub = device_registry.async_get_device_by_identifier((DOMAIN, entry_id), entry_id)
+    assert hub is not None
+    assert hub.via_device_id is None
+    assert coordinator.hub_device_id == hub.id
+
+    devices = dr.async_entries_for_config_entry(device_registry, entry_id)
+    assert {identifier for d in devices for identifier in d.identifiers} == {
+        (DOMAIN, entry_id),
+        (DOMAIN, f"{entry_id}_program_builtin"),
+        (DOMAIN, f"{entry_id}_program_7"),
+        (DOMAIN, f"{entry_id}_program_9"),
+    }
+    for device in devices:
+        if device.id != hub.id:
+            assert device.via_device_id == hub.id
+
+    _assert_no_device_registry_deprecation(caplog)
+
+
+async def test_existing_devices_are_reused_without_duplicates(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_api_client: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An install upgraded from a release that still used `via_device` keeps its
+    hub and programme devices: same device ids, same parent link, nothing new."""
+    mock_config_entry.add_to_hass(hass)
+    entry_id = mock_config_entry.entry_id
+    device_registry = dr.async_get(hass)
+    old_hub = device_registry.async_get_or_create(
+        config_entry_id=entry_id,
+        identifiers={(DOMAIN, entry_id)},
+        name="StudyLife",
+        manufacturer="StudyLife (self-hosted)",
+        model="Blazor WebAssembly app",
+    )
+    old_program = device_registry.async_get_or_create(
+        config_entry_id=entry_id,
+        identifiers={(DOMAIN, f"{entry_id}_program_builtin")},
+        name="StudyLife — Default",
+        manufacturer="StudyLife (self-hosted)",
+        model="Study programme",
+        via_device_id=old_hub.id,
+    )
+
+    with patch(PATCH_TARGET, return_value=mock_api_client):
+        assert await hass.config_entries.async_setup(entry_id)
+        await hass.async_block_till_done()
+
+    devices = dr.async_entries_for_config_entry(device_registry, entry_id)
+    assert {device.id for device in devices} == {old_hub.id, old_program.id}
+    program = device_registry.async_get(old_program.id)
+    assert program is not None
+    assert program.via_device_id == old_hub.id
+    assert hass.data[DOMAIN][entry_id].hub_device_id == old_hub.id
+
+    _assert_no_device_registry_deprecation(caplog)

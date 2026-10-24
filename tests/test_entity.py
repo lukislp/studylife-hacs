@@ -33,12 +33,18 @@ def _make_entry() -> MockConfigEntry:
     )
 
 
-def _fake_coordinator(programs: dict[str, object], last_update_success: bool = True):
+def _fake_coordinator(
+    programs: dict[str, object],
+    last_update_success: bool = True,
+    hub_device_id: str | None = "hub-device-id",
+):
     """Minimal stand-in for StudyLifeCoordinator, carrying only what
-    CoordinatorEntity.available and StudyLifeProgramEntity.available touch."""
+    CoordinatorEntity.available, StudyLifeProgramEntity.available and the
+    programme DeviceInfo (hub_device_id) touch."""
     return SimpleNamespace(
         data=SimpleNamespace(programs=programs),
         last_update_success=last_update_success,
+        hub_device_id=hub_device_id,
     )
 
 
@@ -56,6 +62,7 @@ def test_hub_entity_unique_id_and_device_info() -> None:
     assert entity.device_info["identifiers"] == {(DOMAIN, entry.entry_id)}
     assert entity.device_info["name"] == "StudyLife"
     assert "via_device" not in entity.device_info
+    assert "via_device_id" not in entity.device_info
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +73,11 @@ def test_hub_entity_unique_id_and_device_info() -> None:
 def test_program_entity_unique_id_and_device_info() -> None:
     entry = _make_entry()
     entity = StudyLifeEntity(
-        MagicMock(), entry, "week_hours", program_id="5", program_name="Master's"
+        _fake_coordinator(programs={}),
+        entry,
+        "week_hours",
+        program_id="5",
+        program_name="Master's",
     )
 
     assert entity.unique_id == f"{entry.entry_id}_program_5_week_hours"
@@ -76,7 +87,27 @@ def test_program_entity_unique_id_and_device_info() -> None:
         (DOMAIN, f"{entry.entry_id}_program_5")
     }
     assert entity.device_info["name"] == "StudyLife — Master's"
-    assert entity.device_info["via_device"] == (DOMAIN, entry.entry_id)
+    # The parent is referenced by its device registry id; the deprecated
+    # `via_device` identifier tuple (removed in HA 2027.8) is never set.
+    assert entity.device_info["via_device_id"] == "hub-device-id"
+    assert "via_device" not in entity.device_info
+
+
+def test_program_entity_without_hub_device_id_has_no_parent_link() -> None:
+    """Before the hub device id is known, no link at all is set - never a
+    fallback to the deprecated `via_device`."""
+    entry = _make_entry()
+    entity = StudyLifeEntity(
+        _fake_coordinator(programs={}, hub_device_id=None),
+        entry,
+        "week_hours",
+        program_id="5",
+        program_name="Master's",
+    )
+
+    assert entity.device_info is not None
+    assert "via_device_id" not in entity.device_info
+    assert "via_device" not in entity.device_info
 
 
 # ---------------------------------------------------------------------------
