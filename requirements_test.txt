@@ -2947,9 +2947,9 @@ python-slugify==9.1.2 \
     --hash=sha256:a470dafd2ad79672606cc0d1a5fcaf7a2ccf8f358073ff29b5b93c2bd7e288d6 \
     --hash=sha256:bd36ca98e5ebb1cd2b9dfa2f27b948ce87402fb083b762cbd9d0fa3aed489a92
     # via homeassistant
-pyturbojpeg==2.5.0 \
-    --hash=sha256:2c10c2de86aa0e4fd9d08de187e46e975d108db35c25842d342393913cf54c36 \
-    --hash=sha256:572e74886110e0bd85f8a95a188f1cda94c4a5f0222ff38a22d7e12faeb9844b
+pyturbojpeg==2.6.1 \
+    --hash=sha256:2e3b992b708c2ccb316853f1b0ab43a89218fec10af0a2fbbda266a7a72b36d1 \
+    --hash=sha256:94c2c81a1d46534df8eeb49b0c760982683d0707eb09c7b02bdf61ad7e048d99
     # via -r requirements_test.in
 pytz==2026.5 \
     --hash=sha256:e658af3757f9e26a9d25dd2aff38335acd92bc9104f890a894b2c1ba28311b03 \
