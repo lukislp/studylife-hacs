@@ -477,7 +477,7 @@ async def test_topics_by_course_breakdown_still_derived_locally_from_course_goal
 # ---------------------------------------------------------------------------
 
 # 2026-01-08 12:00:00 UTC = 2026-01-08 04:00 US/Pacific (the test hass fixture's default
-# tz - see pytest_homeassistant_custom_component.common). A Thursday, so "this week" runs
+# tz - see pytest_homeassistant.common). A Thursday, so "this week" runs
 # Monday 2026-01-05 through Sunday 2026-01-11.
 FROZEN_NOW = "2026-01-08 12:00:00"
 

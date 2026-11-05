@@ -1,7 +1,7 @@
 """Tests for StudyLifeApiClient (custom_components/studylife/api.py).
 
 Deliberately standalone: aiohttp + aioresponses only, no Home Assistant test
-harness (no hass fixture, no pytest_homeassistant_custom_component pieces),
+harness (no hass fixture, no pytest_homeassistant pieces),
 mirroring the fact that api.py itself has zero HA imports.
 """
 

@@ -82,7 +82,7 @@ def _fetch_spec(source: str) -> dict[str, Any]:
 @pytest.fixture
 def spec() -> dict[str, Any]:
     """Function-scoped (not session-scoped): `allow_network_for` (see _network_fetch.py) must
-    run from inside a fixture/test body, after pytest-homeassistant-custom-component's own
+    run from inside a fixture/test body, after pytest-homeassistant's own
     pytest_runtest_setup hook has already re-clamped sockets to 127.0.0.1-only for this test -
     a session-scoped fixture's body only runs once, before that per-test hook has necessarily
     fired for every subsequent test. _fetch_spec is process-wide lru_cache'd, so only the
