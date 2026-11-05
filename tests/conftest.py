@@ -10,7 +10,7 @@ import pytest
 from homeassistant.const import CONF_API_KEY, CONF_API_TOKEN, CONF_URL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.studylife.const import (
     CONF_ENTRY_TYPE,
@@ -18,20 +18,15 @@ from custom_components.studylife.const import (
     ENTRY_TYPE_DISPLAY,
 )
 
-pytest_plugins = "pytest_homeassistant_custom_component"
+# pytest-homeassistant registers itself through its pytest11 entry point and loads
+# custom_components/ for every test by default, so there is no plugin line and no
+# enable_custom_integrations fixture here any more.
 
 TEST_URL = "http://studylife.local:5000"
 TEST_API_KEY = "test-api-key"
 
 TEST_DISPLAY_URL = "http://studylife-display.local:8795"
 TEST_DISPLAY_TOKEN = "test-display-token"
-
-
-@pytest.fixture(autouse=True)
-def auto_enable_custom_integrations(enable_custom_integrations: Any) -> None:
-    """Home Assistant only loads custom_components/ during tests when this
-    fixture (provided by pytest-homeassistant-custom-component) is requested -
-    autouse so every test in this suite gets it without repeating it everywhere."""
 
 
 @pytest.fixture

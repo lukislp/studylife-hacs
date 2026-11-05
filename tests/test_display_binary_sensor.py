@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 from homeassistant.const import STATE_OFF, STATE_ON, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from .conftest import get_entity_id, make_raw_display_state, setup_display_integration
 

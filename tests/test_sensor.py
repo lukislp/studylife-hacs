@@ -16,7 +16,7 @@ import pytest
 from freezegun import freeze_time
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.studylife.sensor import (
     PROGRAM_SENSOR_DESCRIPTIONS,
@@ -35,7 +35,7 @@ from .conftest import (
 )
 
 # 2026-01-08 12:00:00 UTC = 2026-01-08 04:00 US/Pacific (the test hass fixture's
-# default tz - see pytest_homeassistant_custom_component.common). A Thursday, so
+# default tz - see pytest_homeassistant.common). A Thursday, so
 # "this week" runs Monday 2026-01-05 through Sunday 2026-01-11 - safely mid-week,
 # no timezone-driven date-boundary ambiguity.
 FROZEN_NOW = "2026-01-08 12:00:00"

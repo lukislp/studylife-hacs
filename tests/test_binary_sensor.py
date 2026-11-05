@@ -15,7 +15,7 @@ from unittest.mock import Mock
 
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.studylife.binary_sensor import (
     PROGRAM_BINARY_SENSOR_DESCRIPTIONS,

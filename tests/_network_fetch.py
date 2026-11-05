@@ -1,7 +1,7 @@
 """Shared helper for the two tests that need one real outbound HTTPS fetch against studylife's
 GitHub repo: test_openapi_contract.py and test_metrics_golden_fixtures.py.
 
-pytest-homeassistant-custom-component disables real sockets for every test by default (its
+pytest-homeassistant disables real sockets for every test by default (its
 plugins.py registers its OWN unconditional `pytest_runtest_setup` hook that always calls
 `pytest_socket.socket_allow_hosts(["127.0.0.1"])` then `pytest_socket.disable_socket(...)`,
 regardless of any `socket_enabled` fixture/marker - that hook doesn't check for either). The
@@ -23,10 +23,10 @@ import socket
 
 import pytest_socket
 
-# pytest-homeassistant-custom-component >= 0.13.36x additionally replaces socket.getaddrinfo /
-# gethostbyname with wrappers that refuse every non-IP hostname ("DNS resolution disabled in
-# tests"). That happens inside its per-test setup hook, so the originals captured here at
-# import (collection) time are the real ones.
+# pytest-homeassistant additionally replaces socket.getaddrinfo / gethostbyname with wrappers
+# that refuse every non-IP hostname ("DNS resolution disabled in tests"). That happens inside
+# its per-test setup hook, so the originals captured here at import (collection) time are the
+# real ones.
 _REAL_GETADDRINFO = socket.getaddrinfo
 _REAL_GETHOSTBYNAME = socket.gethostbyname
 

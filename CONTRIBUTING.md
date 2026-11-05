@@ -67,10 +67,11 @@ instance's `custom_components/` directory and restart.
 
 ### Regenerating a requirements lock
 
-Edit the `.in` file, then recompile with `pip-tools` under Python 3.14:
+Edit the `.in` file, then recompile with `pip-tools` under Python 3.14 on Linux (the lock is
+resolved for the Linux CI runners; `--upgrade` stops the old pins from constraining the resolver):
 
 ```bash
-pip-compile --allow-unsafe --generate-hashes --no-emit-index-url --no-index --strip-extras requirements_test.in
+pip-compile --upgrade --allow-unsafe --generate-hashes --no-emit-index-url --strip-extras requirements_test.in
 ```
 
 ## Security issues

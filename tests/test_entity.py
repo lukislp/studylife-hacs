@@ -14,7 +14,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from homeassistant.const import CONF_API_KEY, CONF_URL
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.studylife.const import DOMAIN
 from custom_components.studylife.entity import StudyLifeEntity, StudyLifeProgramEntity
