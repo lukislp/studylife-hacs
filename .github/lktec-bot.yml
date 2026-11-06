@@ -13,6 +13,13 @@ modules:
     method: squash
     # Dependency names (exact, case-insensitive) that are never approved or armed.
     exclude: []
+  # Commits the coverage badge after a release (see docs/modules/sync.md in lukislp/lktec-bot).
+  # The App is a bypass actor of the branch ruleset for it.
+  sync:
+    enabled: true
+    paths: [.github/badges]
+    branch: main
+    commit-message: "chore(badges): coverage after {version} [skip ci]"
   # Tags and publishes a release from the Conventional Commits on the default branch (see
   # docs/modules/release.md in lukislp/lktec-bot). The old .releaserc.json carried no
   # releaseRules, so the defaults apply: breaking major, feat minor, fix/perf/revert patch.
