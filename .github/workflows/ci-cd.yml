@@ -36,6 +36,12 @@ permissions:
 jobs:
   ci:
     uses: lukislp/ci-workflows/.github/workflows/hacs-ci.yml@f92d847e53d0b4d0c1fcec659b8d67663a83a420 # v1.10.0
+    # hacs-ci.yml still declares write permissions on its (skipped) release jobs; a caller must grant
+    # them or the workflow fails to start. The test jobs narrow themselves to contents: read.
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     with:
       component: studylife
       fuzz-script: fuzz/fuzz_coordinator.py
