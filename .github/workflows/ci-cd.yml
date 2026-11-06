@@ -1,7 +1,7 @@
 # Tests and releases of the integration. The test stage lives in lukislp/ci-workflows
 # (hacs-ci.yml): HACS + hassfest validation, ruff, pytest with the coverage badge artifact and an
 # Atheris fuzz pass; check names in the branch ruleset are "ci / <job>". The release is not part
-# of it (release: false). Instead, every push to main is looked at by the release module of the
+# of it. Instead, every push to main is looked at by the release module of the
 # lktec-bot GitHub App (policy and rules: .github/lktec-bot.yml, documented in
 # docs/modules/release.md of lukislp/lktec-bot). When the Conventional Commits since the highest
 # v* tag warrant a release, the run
@@ -35,18 +35,12 @@ permissions:
 
 jobs:
   ci:
-    uses: lukislp/ci-workflows/.github/workflows/hacs-ci.yml@f92d847e53d0b4d0c1fcec659b8d67663a83a420 # v1.10.0
-    # hacs-ci.yml still declares write permissions on its (skipped) release jobs; a caller must grant
-    # them or the workflow fails to start. The test jobs narrow themselves to contents: read.
+    uses: lukislp/ci-workflows/.github/workflows/hacs-ci.yml@dbab0a38a1c660130a4df3976732dca5ffe789f7 # v1.10.1
     permissions:
-      contents: write
-      issues: write
-      pull-requests: write
+      contents: read
     with:
       component: studylife
       fuzz-script: fuzz/fuzz_coordinator.py
-      release-group: studylife-hacs-release-chain
-      release: false
 
   release:
     needs: [ci]
