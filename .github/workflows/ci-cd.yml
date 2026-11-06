@@ -1,6 +1,21 @@
-# The whole pipeline lives in lukislp/ci-workflows (hacs-ci.yml): HACS + hassfest validation,
-# ruff, pytest with the coverage badge, an Atheris fuzz pass, then get-version and
-# semantic-release on main. Check names in the branch ruleset are "ci / <job>".
+# Tests and releases of the integration. The test stage lives in lukislp/ci-workflows
+# (hacs-ci.yml): HACS + hassfest validation, ruff, pytest with the coverage badge artifact and an
+# Atheris fuzz pass; check names in the branch ruleset are "ci / <job>". The release is not part
+# of it (release: false). Instead, every push to main is looked at by the release module of the
+# lktec-bot GitHub App (policy and rules: .github/lktec-bot.yml, documented in
+# docs/modules/release.md of lukislp/lktec-bot). When the Conventional Commits since the highest
+# v* tag warrant a release, the run
+#   * lets the App create the tag v<version> together with the GitHub release and its notes
+#     through the GitHub API (job release). No deploy key and no semantic-release: the tag is
+#     not SSH-signed, the assets are what is signed and attested,
+#   * builds studylife.zip from that commit: the content of custom_components/studylife with the
+#     release version in manifest.json, which is what HACS installs (hacs.json zip_release),
+#   * attaches studylife.zip with SHA256SUMS, a Sigstore keyless bundle per file
+#     (*.sigstore.json) and the GitHub build provenance (studylife-<version>.intoto.jsonl), and
+#     adds the verification commands to the release notes (job publish).
+# No file in the repository carries the release version (manifest.json stays at 0.0.0), so a
+# release makes no commit. A run whose commit is no longer the tip of main is skipped: the run
+# of the newer push releases it. Never on pull requests.
 name: CI/CD
 
 on:
@@ -16,11 +31,13 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read # the reusable release workflow looks up which commit of itself it was called at
 
 jobs:
   ci:
-    uses: lukislp/ci-workflows/.github/workflows/hacs-ci.yml@ea532e9b173cf0e512c9d54c18886eebd0b0d1ab # v1.8.24
-    # The called workflow narrows these per job (the test jobs run with contents: read).
+    uses: lukislp/ci-workflows/.github/workflows/hacs-ci.yml@f92d847e53d0b4d0c1fcec659b8d67663a83a420 # v1.10.0
+    # hacs-ci.yml still declares write permissions on its (skipped) release jobs; a caller must grant
+    # them or the workflow fails to start. The test jobs narrow themselves to contents: read.
     permissions:
       contents: write
       issues: write
@@ -29,5 +46,90 @@ jobs:
       component: studylife
       fuzz-script: fuzz/fuzz_coordinator.py
       release-group: studylife-hacs-release-chain
+      release: false
+
+  release:
+    needs: [ci]
+    if: github.event_name == 'push'
+    uses: lukislp/lktec-bot/.github/workflows/release.yml@0c0eccf67f1f06f21fd110626322a92c92e4cb82 # v0.1.1
     secrets:
-      SEMANTIC_RELEASE_DEPLOY_KEY: ${{ secrets.SEMANTIC_RELEASE_DEPLOY_KEY }}
+      app-id: ${{ secrets.LKTEC_BOT_APP_ID }}
+      private-key: ${{ secrets.LKTEC_BOT_PRIVATE_KEY }}
+
+  # Signed, verifiable release assets (OpenSSF Scorecard "Signed-Releases"): the HACS zip,
+  # SHA256SUMS over it, a Sigstore keyless bundle per file and one GitHub build provenance
+  # attestation, attached as studylife-<version>.intoto.jsonl.
+  publish:
+    needs: [release]
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build studylife.zip and SHA256SUMS
+        run: |
+          set -eu
+          python3 scripts/build_release_zip.py --version "$VERSION" --out assets/studylife.zip
+          (cd assets && sha256sum -- * > "$RUNNER_TEMP/SHA256SUMS")
+          mv "$RUNNER_TEMP/SHA256SUMS" assets/SHA256SUMS
+          cat assets/SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        id: provenance
+        with:
+          subject-checksums: assets/SHA256SUMS
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Sign every asset (Sigstore keyless) and verify
+        env:
+          IDENTITY: https://github.com/${{ github.workflow_ref }}
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          set -eu
+          for file in assets/*; do
+            cosign sign-blob --yes --bundle "$file.sigstore.json" "$file"
+            cosign verify-blob --bundle "$file.sigstore.json" \
+              --certificate-identity "$IDENTITY" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com "$file"
+          done
+          cp "$BUNDLE" "assets/studylife-$VERSION.intoto.jsonl"
+      - name: Attach the assets and complete the release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -eu
+          tag="v$VERSION"
+          gh release view "$tag" -R "$REPOSITORY" --json tagName --jq .tagName
+          gh release upload "$tag" -R "$REPOSITORY" --clobber assets/*
+          gh release view "$tag" -R "$REPOSITORY" --json body --jq .body > notes.md
+          {
+            echo
+            echo "## Install"
+            echo
+            echo "HACS installs \`studylife.zip\` of this release (custom repository \`https://github.com/$REPOSITORY\`, type Integration). By hand: unpack it into \`<config>/custom_components/studylife/\` and restart Home Assistant."
+            echo
+            echo "## Verify"
+            echo
+            echo "Tag \`$tag\` was created by the lktec-bot GitHub App through the GitHub API. Every file below has a Sigstore \`.sigstore.json\` bundle, \`SHA256SUMS\` lists them, and \`studylife-$VERSION.intoto.jsonl\` is their build provenance."
+            echo
+            echo '```bash'
+            echo "sha256sum -c SHA256SUMS --ignore-missing"
+            echo "gh attestation verify studylife.zip -R $REPOSITORY"
+            echo "cosign verify-blob --bundle studylife.zip.sigstore.json \\"
+            echo "  --certificate-identity https://github.com/$REPOSITORY/.github/workflows/ci-cd.yml@refs/heads/main \\"
+            echo "  --certificate-oidc-issuer https://token.actions.githubusercontent.com studylife.zip"
+            echo '```'
+          } >> notes.md
+          gh release edit "$tag" -R "$REPOSITORY" --notes-file notes.md
+          echo "- release \`$tag\` with $(find assets -type f | wc -l) assets" >> "$GITHUB_STEP_SUMMARY"
