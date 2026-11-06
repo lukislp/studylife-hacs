@@ -42,10 +42,41 @@ jobs:
       component: studylife
       fuzz-script: fuzz/fuzz_coordinator.py
 
+  # Lays the coverage badge of the test stage out as the handover that publish-badge commits.
+  badge-handover:
+    needs: [ci]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+        with:
+          egress-policy: audit
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage-badge
+          path: ${{ runner.temp }}/in
+      - name: Lay out the handover
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/badge-handover/files/.github/badges"
+          cp "$RUNNER_TEMP/in/coverage-badge.json" "$RUNNER_TEMP/badge-handover/files/.github/badges/coverage.json"
+          printf '%s\n' .github/badges/coverage.json > "$RUNNER_TEMP/badge-handover/manifest.txt"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-badge-handover
+          path: ${{ runner.temp }}/badge-handover
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
   release:
     needs: [ci]
     if: github.event_name == 'push'
-    uses: lukislp/lktec-bot/.github/workflows/release.yml@38079b17498fcfda986f427fd6258bd32185e7c3 # v0.2.0
+    uses: lukislp/lktec-bot/.github/workflows/release.yml@f1dbc56e0810b5f78691019889fc76cf5423d7fa # v0.3.0
     secrets:
       app-id: ${{ secrets.LKTEC_BOT_APP_ID }}
       private-key: ${{ secrets.LKTEC_BOT_PRIVATE_KEY }}
@@ -127,3 +158,16 @@ jobs:
           } >> notes.md
           gh release edit "$tag" -R "$REPOSITORY" --notes-file notes.md
           echo "- release \`$tag\` with $(find assets -type f | wc -l) assets" >> "$GITHUB_STEP_SUMMARY"
+
+  # Commits the coverage badge as the lktec-bot App after each release (policy: modules.sync).
+  publish-badge:
+    needs: [release, badge-handover]
+    if: needs.release.outputs.released == 'true'
+    uses: lukislp/lktec-bot/.github/workflows/sync.yml@f1dbc56e0810b5f78691019889fc76cf5423d7fa # v0.3.0
+    with:
+      artifact: coverage-badge-handover
+      branch: main
+      version: ${{ needs.release.outputs.version }}
+    secrets:
+      app-id: ${{ secrets.LKTEC_BOT_APP_ID }}
+      private-key: ${{ secrets.LKTEC_BOT_PRIVATE_KEY }}
