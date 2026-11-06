@@ -15,17 +15,16 @@ small - but it is the same for every change, including the maintainer's own.
 
 ## What a pull request needs
 
-- **Conventional Commits.** The version and the changelog are generated from the commit messages
+- **Conventional Commits.** The version and the release notes are generated from the commit messages
   (`feat:` = minor release, `fix:` = patch release, `build:`/`ci:`/`docs:`/`test:` = no release).
-  The release also syncs the version into `custom_components/studylife/manifest.json`, which is
-  what HACS shows users. Squash-merge keeps the PR title as the commit message, so give the PR a
+  Squash-merge keeps the PR title as the commit message, so give the PR a
   Conventional Commit title.
 - **Green required checks.** `ci / test-unit`, `ci / test-lint`, `ci / test-hassfest`,
   `ci / test-hacs-validation` and `review / dependency-review` are required; a red one blocks the
   merge.
 - **Tests for new functionality.** New features and bug fixes come with tests in `tests/`. A PR
-  that adds behaviour without a test is asked to add one. The coverage badge in the README is
-  regenerated from the coverage report on every release and is expected not to drop.
+  that adds behaviour without a test is asked to add one. The coverage reported by the
+  `ci / test-unit` job is expected not to drop.
 - **Lint and formatting.** `test-lint` runs `ruff check .` **and** `ruff format --check .`. Run
   both before pushing; `ruff check` passing does not mean the formatting is clean.
 - **Home Assistant's own gates.** `test-hassfest` validates the manifest and integration structure
@@ -34,6 +33,28 @@ small - but it is the same for every change, including the maintainer's own.
 - **Hash-pinned requirements.** The requirement files are compiled with hashes and installed with
   `--require-hashes`, so adding or bumping a dependency means editing the matching `.in` file and
   regenerating the `.txt` (see below) - not hand-editing the `.txt`.
+
+## Releases
+
+`.github/workflows/ci-cd.yml` looks at every push to `main` through the release module of the
+lktec-bot GitHub App (job `release`; policy and rules in `.github/lktec-bot.yml`), after the tests
+of the `ci` job passed. The version comes from the Conventional Commits since the highest `v*`
+tag: breaking change -> major, `feat` -> minor, `fix`/`perf`/`revert` -> patch; docs, ci, build,
+chore, test and refactor commits publish nothing. When a release is due, the App creates the tag
+`v<version>` together with the GitHub release (and its notes) through the API, then the `publish`
+job builds `studylife.zip` from that commit with the version written into `manifest.json` (the
+repository's manifest stays at `0.0.0`; HACS installs the zip, `zip_release` in `hacs.json`) and
+attaches it with `SHA256SUMS`, Sigstore bundles and a build provenance attestation. A release makes
+no commit.
+
+The tag itself carries no signature: GitHub does not sign tag objects that an App creates.
+`studylife.zip`, `SHA256SUMS`, the Sigstore bundles and the build provenance are what to verify.
+
+**Secrets of the release:** `LKTEC_BOT_APP_ID` and `LKTEC_BOT_PRIVATE_KEY` (the App must be
+installed on the repository).
+
+**A failed release.** When `publish` fails, the tag and the GitHub release already exist; re-run
+the failed job (`gh run rerun <run-id> --failed`). Do not delete or move a published tag.
 
 ## CI in this repository
 

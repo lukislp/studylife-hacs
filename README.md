@@ -31,9 +31,11 @@ integration doesn't change anything in the StudyLife app.
 
 ## Installation
 
-1. Copy the `custom_components/studylife` folder into the `config/custom_components/` directory of your Home Assistant instance (end result: `config/custom_components/studylife/manifest.json`).
+1. Install it through HACS (three dots, **Custom repositories**, add `https://github.com/lukislp/studylife-hacs` with type **Integration**, install **StudyLife**; HACS installs the `studylife.zip` of the chosen release), or by hand: unpack `studylife.zip` of a [release](https://github.com/lukislp/studylife-hacs/releases) into `config/custom_components/studylife/` of your Home Assistant instance (end result: `config/custom_components/studylife/manifest.json`).
 2. Restart Home Assistant.
 3. **Settings → Devices & Services → Add Integration → "StudyLife"** — a menu asks what to add: a **StudyLife account** (a server) or a **studylife-display panel** (see [studylife-display](#studylife-display-optional) below). For an account: enter the base URL of the StudyLife server (e.g. `http://studylife.local:8080`) and the API key. Generate the key once on the **StudyLife app's setup page** (the "Home Assistant" card) and copy the value shown — it's displayed only once. The key is long-lived — it never rotates and never expires, so this really is a one-time step (see [API key](#api-key) below).
+
+Each release ships `studylife.zip` with `SHA256SUMS`, Sigstore signatures and build provenance (see [SECURITY.md](SECURITY.md)).
 
 The poll interval (default 30s, same as the client's `AppStateService`) can be adjusted via **Configure** on the integration tile. On endpoints with server-side caching (`/api/sessions`, `/api/sessions/history`, `/api/settings`, `/api/courses`), the integration polls using conditional GET (`If-None-Match` against the server's ETags) — unchanged data is answered with an empty `304 Not Modified` instead of being retransmitted in full every time.
 

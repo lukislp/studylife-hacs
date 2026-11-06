@@ -1,5 +1,7 @@
 {
   "name": "StudyLife",
+  "zip_release": true,
+  "filename": "studylife.zip",
   "render_readme": true,
   "homeassistant": "2026.8.0"
 }
