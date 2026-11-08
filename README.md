@@ -311,6 +311,20 @@ Note: the iCalendar feed (`GET /api/sessions/ics`, for external calendar apps) u
 
 Details on the API and data model: [`docs/ARCHITECTURE.md`](https://github.com/lukislp/studylife/blob/main/docs/ARCHITECTURE.md#home-assistant-integration) in the main app repo.
 
+## Development
+
+### Develop in a Codespace
+
+Click the **Open in GitHub Codespaces** badge above. The Codespace comes with Python 3.14 and the pinned test and lint requirements installed. Home Assistant does **not** start by itself; run it in the Codespace terminal:
+
+```bash
+scripts/develop
+```
+
+The first start takes a few minutes, because Home Assistant installs its frontend and other runtime packages into `config/`. Then open port 8123 in the **Ports** tab (`https://<codespace-name>-8123.app.github.dev`), create a local owner account in the onboarding, and add the integration under **Settings → Devices & Services → Add Integration**. `scripts/develop` loads the integration from your checkout; restart it after a code change.
+
+Run the tests with `pytest tests/ -v --cov=custom_components/studylife --cov-report=json:coverage.json`. More in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 [MIT](LICENSE).
