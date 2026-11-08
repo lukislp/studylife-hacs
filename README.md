@@ -1,6 +1,6 @@
 # StudyLife — Home Assistant Integration
 
-[![CI/CD](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/lukislp/studylife-hacs/badge)](https://scorecard.dev/viewer/?uri=github.com/lukislp/studylife-hacs) [![CodeQL](https://github.com/lukislp/studylife-hacs/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/lukislp/studylife-hacs/security/code-scanning)
+[![CI/CD](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/lukislp/studylife-hacs/badge)](https://scorecard.dev/viewer/?uri=github.com/lukislp/studylife-hacs) [![CodeQL](https://github.com/lukislp/studylife-hacs/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/lukislp/studylife-hacs/security/code-scanning) [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/lukislp/studylife-hacs?quickstart=1)
 [![Release](https://img.shields.io/github/v/release/lukislp/studylife-hacs)](https://github.com/lukislp/studylife-hacs/releases)
 [![License: MIT](https://img.shields.io/github/license/lukislp/studylife-hacs)](LICENSE)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
@@ -310,6 +310,20 @@ The StudyLife server protects its entire `/api` with **personal, long-lived API 
 Note: the iCalendar feed (`GET /api/sessions/ics`, for external calendar apps) uses its own permanent `?calendarToken=` query parameter, since calendar clients can't set custom headers — but this affects the web app, not this integration.
 
 Details on the API and data model: [`docs/ARCHITECTURE.md`](https://github.com/lukislp/studylife/blob/main/docs/ARCHITECTURE.md#home-assistant-integration) in the main app repo.
+
+## Development
+
+### Develop in a Codespace
+
+Click the **Open in GitHub Codespaces** badge above. The Codespace comes with Python 3.14 and the pinned test and lint requirements installed. Home Assistant does **not** start by itself; run it in the Codespace terminal:
+
+```bash
+scripts/develop
+```
+
+The first start takes a few minutes, because Home Assistant installs its frontend and other runtime packages into `config/`. Then open port 8123 in the **Ports** tab (`https://<codespace-name>-8123.app.github.dev`), create a local owner account in the onboarding, and add the integration under **Settings → Devices & Services → Add Integration**. `scripts/develop` loads the integration from your checkout; restart it after a code change.
+
+Run the tests with `pytest tests/ -v --cov=custom_components/studylife --cov-report=json:coverage.json`. More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

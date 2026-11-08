@@ -86,6 +86,25 @@ PYTHONPATH=. python fuzz/fuzz_coordinator.py -max_total_time=30 -rss_limit_mb=10
 To try the integration against a real Home Assistant, copy `custom_components/studylife` into your
 instance's `custom_components/` directory and restart.
 
+### Codespaces / Dev Container
+
+`.devcontainer/` gives you a ready environment in GitHub Codespaces ("Open in Codespaces" badge in
+the README) or in VS Code with the Dev Containers extension: Python 3.14 with the pinned test and
+lint requirements installed (the same `--require-hashes` install as CI), the GitHub CLI, and the
+system libraries Home Assistant's camera, stream and dhcp components need.
+
+Run the tests right away:
+
+```bash
+pytest tests/ -v --cov=custom_components/studylife --cov-report=json:coverage.json
+```
+
+To try the integration in a real Home Assistant, run `scripts/develop`. It starts a dev instance
+in the foreground on port 8123 (forwarded, private) with `custom_components/studylife` loaded
+from the checkout; its configuration lives in the git-ignored `config/`. The first start takes a
+few minutes while Home Assistant installs its requirements, and onboarding creates a local owner
+account. Stop it with Ctrl+C.
+
 ### Regenerating a requirements lock
 
 Edit the `.in` file, then recompile with `pip-tools` under Python 3.14 on Linux (the lock is

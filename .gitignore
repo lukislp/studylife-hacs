@@ -9,3 +9,6 @@ coverage-badge.json
 crash-*
 leak-*
 timeout-*
+
+# Home Assistant dev instance (scripts/develop)
+config/
