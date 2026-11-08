@@ -1,0 +1,25 @@
+{
+  "name": "StudyLife Home Assistant integration",
+  "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "hostRequirements": { "cpus": 2, "memory": "8gb" },
+  "containerEnv": { "PYTHONDONTWRITEBYTECODE": "1" },
+  "remoteEnv": { "PATH": "${containerEnv:PATH}:/home/vscode/.local/bin" },
+  "forwardPorts": [8123],
+  "portsAttributes": {
+    "8123": {
+      "label": "Home Assistant (scripts/develop)",
+      "onAutoForward": "notify",
+      "visibility": "private"
+    }
+  },
+  "updateContentCommand": "bash .devcontainer/update-content.sh",
+  "postAttachCommand": "bash .devcontainer/post-attach.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff"]
+    }
+  }
+}

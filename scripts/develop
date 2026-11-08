@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+#
+# Runs a Home Assistant dev instance in the foreground (port 8123) with
+# custom_components/studylife loaded from this checkout. The configuration lives in
+# config/ (git-ignored). On the first start Home Assistant installs the requirements of its
+# default integrations into config/deps; that takes a few minutes.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+mkdir -p config
+if [ ! -f config/configuration.yaml ]; then
+  cat > config/configuration.yaml <<'YAML'
+default_config:
+
+logger:
+  default: info
+  logs:
+    custom_components.studylife: debug
+YAML
+fi
+
+# pip installs the console scripts (hass) into ~/.local/bin in the dev container.
+export PATH="${PATH}:${HOME}/.local/bin"
+export PYTHONPATH="${PYTHONPATH:-}:${PWD}/custom_components"
+
+exec hass --config "${PWD}/config" --debug
