@@ -35,7 +35,7 @@ permissions:
 
 jobs:
   ci:
-    uses: lukislp/ci-workflows/.github/workflows/hacs-ci.yml@dbab0a38a1c660130a4df3976732dca5ffe789f7 # v1.10.1
+    uses: lukislp/ci-workflows/.github/workflows/hacs-ci.yml@9b5de8d751efb4a3f0392a967e7b56db85263789 # v1.11.0
     permissions:
       contents: read
     with:
