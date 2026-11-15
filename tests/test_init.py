@@ -79,7 +79,7 @@ async def test_setup_entry_success(
     # select.py always creates exactly one entity on the hub device regardless of
     # data content - a reliable signal that PLATFORMS actually got forwarded and
     # ran, not just that the coordinator refreshed.
-    assert hass.states.get("select.studylife_active_course") is not None
+    assert hass.states.get("select.studyatrium_active_course") is not None
 
     for service in ALL_SERVICES:
         assert hass.services.has_service(DOMAIN, service)
