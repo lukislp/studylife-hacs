@@ -1,4 +1,6 @@
-# StudyLife — Home Assistant Integration
+# StudyAtrium — Home Assistant Integration
+
+(formerly StudyLife)
 
 [![CI/CD](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/lukislp/studylife-hacs/badge)](https://scorecard.dev/viewer/?uri=github.com/lukislp/studylife-hacs) [![CodeQL](https://github.com/lukislp/studylife-hacs/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/lukislp/studylife-hacs/security/code-scanning) [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/lukislp/studylife-hacs?quickstart=1)
 [![Release](https://img.shields.io/github/v/release/lukislp/studylife-hacs)](https://github.com/lukislp/studylife-hacs/releases)
@@ -6,10 +8,10 @@
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
 [![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/lukislp/studylife-hacs/main/.github/badges/coverage.json)](https://github.com/lukislp/studylife-hacs/actions/workflows/ci-cd.yml)
 
-Home Assistant custom integration for [StudyLife](https://github.com/lukislp/studylife), a
+Home Assistant custom integration for [StudyAtrium](https://github.com/lukislp/studylife), a
 self-hosted study organizer (Blazor WASM + ASP.NET Core). Polls the existing REST API and
 exposes the same metrics as the dashboard and analytics view as entities — otherwise the
-integration doesn't change anything in the StudyLife app.
+integration doesn't change anything in the StudyAtrium app.
 
 - **30+ sensors** covering active/next session, streaks, weekly/monthly quotas, achievements, ECTS progress, grades, and more — mirroring the web dashboard and analytics view
 - **One device per study programme** — every programme (built-in or custom, active or not) gets its own set of progress sensors, all visible at once
@@ -18,7 +20,7 @@ integration doesn't change anything in the StudyLife app.
 - **Long-lived API key auth** (one-time setup, no rotation/expiry) and conditional-GET polling (ETags) so unchanged data costs no bandwidth
 - **Optional [studylife-display](#studylife-display-optional) support** — see and switch what's shown on any number of e-paper panels, each its own device
 
-**Multiple study programmes — one device per programme:** Every study programme (the built-in one plus every custom one you've created, completed or not) gets its **own device** in Home Assistant, `StudyLife — <name>`, with a full set of progress sensors — **all visible at the same time**, regardless of which programme is currently active in the app. On top of that there's a "hub" device `StudyLife` for everything app-global (sessions, timer, notes, calendar, course picker, cross-programme study habit). See [Entities](#entities) for details.
+**Multiple study programmes — one device per programme:** Every study programme (the built-in one plus every custom one you've created, completed or not) gets its **own device** in Home Assistant, `StudyAtrium — <name>`, with a full set of progress sensors — **all visible at the same time**, regardless of which programme is currently active in the app. On top of that there's a "hub" device `StudyAtrium` for everything app-global (sessions, timer, notes, calendar, course picker, cross-programme study habit). See [Entities](#entities) for details.
 
 - **New study programme** (created in the web app): the corresponding device and its entities appear automatically on the next poll cycle — no restart, no re-setup needed.
 - **Deleted study programme:** its entities are **not** automatically removed from the registry — they just go `unavailable`. The orphaned device can then be deleted manually from the HA UI (Settings → Devices & Services → device → Delete). This is deliberate: no automatic cleanup of registry entries that could accidentally break history/automations.
@@ -26,14 +28,14 @@ integration doesn't change anything in the StudyLife app.
 
 ## Requirements
 
-- **StudyLife server v1.44.0 or later.** Every metric this integration exposes (streak, week/month quota, ECTS progress, average grade, forecast, course hours, neglected course, weekly report, topics, month comparison, achievements) is computed server-side and served pre-computed by `GET /api/metrics/summary` and `GET /api/metrics/achievements` — endpoints introduced in that release. An older server doesn't have them: the integration fails the refresh loudly with a clear "update your StudyLife server" message (a Home Assistant repair/`UpdateFailed` notification quoting the missing endpoint) rather than crashing or silently showing stale/wrong numbers. **Deploy order matters:** update the StudyLife server *before* updating this integration — the server release must be live first.
-- **StudyLife server with CourseId validation (first release containing [studylife#86](https://github.com/lukislp/studylife/pull/86)) or later.** Since that release, the server validates every `CourseId` on session/goal writes against your course catalog (built-in + custom courses) and derives `courseName`/`courseColor` itself — an unknown `course_id` is rejected with `400 CourseId {id} does not exist.` regardless of what `course_name`/`course_color` are sent. This integration mirrors that: `create_session`/`update_session`/`set_course_goal` now require the course to resolve via the catalog *before* calling the API (see [Services](#services)).
+- **StudyAtrium server v1.44.0 or later.** Every metric this integration exposes (streak, week/month quota, ECTS progress, average grade, forecast, course hours, neglected course, weekly report, topics, month comparison, achievements) is computed server-side and served pre-computed by `GET /api/metrics/summary` and `GET /api/metrics/achievements` — endpoints introduced in that release. An older server doesn't have them: the integration fails the refresh loudly with a clear "update your StudyAtrium server" message (a Home Assistant repair/`UpdateFailed` notification quoting the missing endpoint) rather than crashing or silently showing stale/wrong numbers. **Deploy order matters:** update the StudyAtrium server *before* updating this integration — the server release must be live first.
+- **StudyAtrium server with CourseId validation (first release containing [studylife#86](https://github.com/lukislp/studylife/pull/86)) or later.** Since that release, the server validates every `CourseId` on session/goal writes against your course catalog (built-in + custom courses) and derives `courseName`/`courseColor` itself — an unknown `course_id` is rejected with `400 CourseId {id} does not exist.` regardless of what `course_name`/`course_color` are sent. This integration mirrors that: `create_session`/`update_session`/`set_course_goal` now require the course to resolve via the catalog *before* calling the API (see [Services](#services)).
 
 ## Installation
 
-1. Install it through HACS (three dots, **Custom repositories**, add `https://github.com/lukislp/studylife-hacs` with type **Integration**, install **StudyLife**; HACS installs the `studylife.zip` of the chosen release), or by hand: unpack `studylife.zip` of a [release](https://github.com/lukislp/studylife-hacs/releases) into `config/custom_components/studylife/` of your Home Assistant instance (end result: `config/custom_components/studylife/manifest.json`).
+1. Install it through HACS (three dots, **Custom repositories**, add `https://github.com/lukislp/studylife-hacs` with type **Integration**, install **StudyAtrium**; HACS installs the `studylife.zip` of the chosen release), or by hand: unpack `studylife.zip` of a [release](https://github.com/lukislp/studylife-hacs/releases) into `config/custom_components/studylife/` of your Home Assistant instance (end result: `config/custom_components/studylife/manifest.json`).
 2. Restart Home Assistant.
-3. **Settings → Devices & Services → Add Integration → "StudyLife"** — a menu asks what to add: a **StudyLife account** (a server) or a **studylife-display panel** (see [studylife-display](#studylife-display-optional) below). For an account: enter the base URL of the StudyLife server (e.g. `http://studylife.local:8080`) and the API key. Generate the key once on the **StudyLife app's setup page** (the "Home Assistant" card) and copy the value shown — it's displayed only once. The key is long-lived — it never rotates and never expires, so this really is a one-time step (see [API key](#api-key) below).
+3. **Settings → Devices & Services → Add Integration → "StudyAtrium"** — a menu asks what to add: a **StudyAtrium account** (a server) or a **studylife-display panel** (see [studylife-display](#studylife-display-optional) below). For an account: enter the base URL of the StudyAtrium server (e.g. `http://studylife.local:8080`) and the API key. Generate the key once on the **StudyAtrium app's setup page** (the "Home Assistant" card) and copy the value shown — it's displayed only once. The key is long-lived — it never rotates and never expires, so this really is a one-time step (see [API key](#api-key) below).
 
 Each release ships `studylife.zip` with `SHA256SUMS`, Sigstore signatures and build provenance (see [SECURITY.md](SECURITY.md)).
 
@@ -43,10 +45,10 @@ The poll interval (default 30s, same as the client's `AppStateService`) can be a
 
 An optional second kind of entry connects Home Assistant directly to one or more
 [studylife-display](https://github.com/lukislp/studylife-display) e-paper panels on the
-LAN — a completely separate service from the StudyLife server, talking to the display's
+LAN — a completely separate service from the StudyAtrium server, talking to the display's
 own bearer-token JSON API (`DISPLAY_API_TOKEN`, off by default there too) rather than
-StudyLife's `X-Api-Key`. **Any number of displays can be added, each becomes its own
-device** — run **Add Integration → "StudyLife" → "studylife-display panel"** again for a
+StudyAtrium's `X-Api-Key`. **Any number of displays can be added, each becomes its own
+device** — run **Add Integration → "StudyAtrium" → "studylife-display panel"** again for a
 second, third, ... panel.
 
 Setup:
@@ -55,7 +57,7 @@ Setup:
    12 characters) and restart `studylife-display-web.service` — see that project's README,
    "JSON API" section. This is a separate, optional token from the one the display's own
    web login uses.
-2. **Settings → Devices & Services → Add Integration → "StudyLife" → "studylife-display
+2. **Settings → Devices & Services → Add Integration → "StudyAtrium" → "studylife-display
    panel"**, enter the display's web interface URL (e.g.
    `http://studylife-display.local:8795`) and the token. Turn off "Verify SSL certificate"
    only if the display serves https with a self-signed certificate (`DISPLAY_TLS=true`
@@ -71,8 +73,8 @@ display by hand as above. A display is recognised by its stable id (from the dis
 release that publishes it), so changing its address or name does not offer it a second
 time.
 
-**Server discovery:** a StudyLife server announces itself (`_studylife._tcp`) when its
-operator enables the opt-in mDNS announcement (`Discovery__Mdns__*`, see the StudyLife
+**Server discovery:** a StudyAtrium server announces itself (`_studylife._tcp`) when its
+operator enables the opt-in mDNS announcement (`Discovery__Mdns__*`, see the StudyAtrium
 server's `docs/MDNS.md`). Home Assistant then offers it under **Discovered** and only asks
 for the API key (generate it on the app's Setup page, "Home Assistant" card). The address
 it uses is the base URL configured on the server (usually the ingress/gateway address),
@@ -99,11 +101,11 @@ entity under the device's **Diagnostic** group (they used to be attributes of
 | `sensor.<display>_resolved_layout` | Sensor | What `auto` currently resolves to. |
 | `sensor.<display>_frame_kind` | Enum | What kind of frame is on the panel: `dashboard`, `error` or `setup`. |
 | `sensor.<display>_shown_at` | Timestamp | When the current frame was drawn. |
-| `sensor.<display>_stale_minutes` | Duration (min) | Age of the StudyLife data the panel shows. |
+| `sensor.<display>_stale_minutes` | Duration (min) | Age of the StudyAtrium data the panel shows. |
 | `sensor.<display>_last_error` | Enum | Kind of the most recent fetch failure - `none`, `rejected`, `stale`, `no_data` or `transient` - with `message`, `http_status` and `at` as attributes while one is recorded. |
 | `sensor.<display>_version` | Sensor | The studylife-display version running on that Pi (also the device's software version, but this one follows upgrades live). |
 | `binary_sensor.<display>_quiet_hours_active` | Binary sensor | On while the display is inside its configured quiet hours. |
-| `binary_sensor.<display>_sessions_problem` | Problem | On while the display's last fetch of StudyLife's sessions failed (`sessions_ok` is false). |
+| `binary_sensor.<display>_sessions_problem` | Problem | On while the display's last fetch of StudyAtrium's sessions failed (`sessions_ok` is false). |
 
 Displays whose `GET /api/layouts` carries the duo extension (`pseudo`, `duo`, `panes`)
 additionally get a **Configuration** group for the layout that is configured rather than
@@ -149,8 +151,8 @@ and removes it again as soon as the condition clears (or the entry is removed):
 
 | Issue | Severity | Raised when |
 |---|---|---|
-| Key rejected | Error | The display reports that its StudyLife key was rejected - reconnect it at `<display url>/connect`. |
-| No data | Error | The display has never fetched any StudyLife data. |
+| Key rejected | Error | The display reports that its StudyAtrium key was rejected - reconnect it at `<display url>/connect`. |
+| No data | Error | The display has never fetched any StudyAtrium data. |
 | Outdated data | Warning | The display is degraded with data older than an hour, or reports stale data. |
 | Sessions scope missing | Warning | The agenda layouts are empty because the key lacks the `Sessions.GetAll` scope - add it in studylife-developers and reconnect. |
 | Unreachable | Error | The display's own API failed 3 polls in a row. |
@@ -162,10 +164,10 @@ re-authentication flow.
 
 Two kinds of devices:
 
-- **Hub device `StudyLife`** (one per configured server): all app-global entities from the table below. Metrics tied to sessions (hours/streak/quotas) count here across **all** study programmes — this is the personal study habit, regardless of what was studied.
-- **One device `StudyLife — <programme name>` per study programme** (via-device on the hub): the per-programme table further below. Entity IDs are derived from the device name, e.g. `sensor.studylife_applied_artificial_intelligence_ects_fortschritt`.
+- **Hub device `StudyAtrium`** (one per configured server): all app-global entities from the table below. Metrics tied to sessions (hours/streak/quotas) count here across **all** study programmes — this is the personal study habit, regardless of what was studied.
+- **One device `StudyAtrium — <programme name>` per study programme** (via-device on the hub): the per-programme table further below. Entity IDs are derived from the device name, e.g. `sensor.studylife_applied_artificial_intelligence_ects_fortschritt`.
 
-### Hub device `StudyLife`
+### Hub device `StudyAtrium`
 
 | Entity | Type | Meaning |
 |---|---|---|
@@ -201,7 +203,7 @@ Two kinds of devices:
 | `calendar.studylife_course_goals` | Calendar | All **open** course goals of the **active** study programme (target date set, not yet completed) as **all-day** entries on the respective target date — title = course name, description = the course's priority tag (e.g. "Exam soon"), if set. Unlike the "Upcoming course goals" dashboard tile, there's no 5-item limit |
 | `select.studylife_active_course` | Select | Dropdown of the active (selected in setup, not yet completed) courses of the **active** study programme — a pure picker, it doesn't trigger any API calls itself. State = course name, attributes: `course_id`, `course_code`, `course_color`, `active_courses` (full list). Selection persists across restarts. Meant to conveniently populate `course_id` via dropdown instead of manual entry for the services below (e.g. `{{ state_attr('select.studylife_active_course', 'course_id') }}`). Deliberately **not** duplicated per study programme: "which course am I currently planning for" depends on what's active in the app anyway |
 
-### Per study programme: device `StudyLife — <name>`
+### Per study programme: device `StudyAtrium — <name>`
 
 Every study programme device carries the same set of entities (entity IDs are derived from the device name, here with `<programme>` as a placeholder). All metrics are scoped to the courses of **this** study programme — including sessions/streaks, which are matched via the globally unique course IDs. The weekly/monthly **target** remains the globally configured one (there are no per-programme targets) — only the studied hours in the counter are scoped to the study programme.
 
@@ -239,7 +241,7 @@ In addition to the sensor, the coordinator fires the bus event **`studylife_week
 
 **`course_name`/`course_color` are deprecated and ignored:** the course's name and color are always resolved server-side from your course catalog (built-in or custom courses), so only `course_id` needs to be given — handy in combination with `select.studylife_active_course` (see above), whose `course_id` attribute can be plugged in directly without having to look up or type the course name yourself. The `course_id` **must** exist in the catalog (`/api/courses`) — create the course in the app first (built-in catalog or your own custom course) if it doesn't yet; an unknown `course_id` is rejected with an error, and `course_name`/`course_color` are still accepted for backward compatibility with older automations but no longer have any effect (the fields remain in the service schema only so those automations don't fail validation).
 
-All six services immediately update the sensors/calendar afterward (no waiting for the next poll cycle). The session ID for `update_session`/`delete_session` is available as the `session_id` attribute on `sensor.studylife_active_session`, `sensor.studylife_next_session`, and in the `sessions` list of `sensor.studylife_today_sessions`, as well as `uid` on the respective calendar entry. If only one StudyLife server is configured, `device_id` can be omitted; with multiple servers, the target device must be specified (Developer Tools → Services → select target device).
+All six services immediately update the sensors/calendar afterward (no waiting for the next poll cycle). The session ID for `update_session`/`delete_session` is available as the `session_id` attribute on `sensor.studylife_active_session`, `sensor.studylife_next_session`, and in the `sessions` list of `sensor.studylife_today_sessions`, as well as `uid` on the respective calendar entry. If only one StudyAtrium server is configured, `device_id` can be omitted; with multiple servers, the target device must be specified (Developer Tools → Services → select target device).
 
 Example automations (service calls via YAML):
 
@@ -297,13 +299,13 @@ data:
 - **Recurring (weekly) appointments** are created client-side in the web app as several independent sessions — there's no series concept in the API. `studylife.create_session` still only covers a single session per call; for multiple appointments in a row, the service must be called multiple times (e.g. via an automation loop).
 - **Timer status is "best effort," not guaranteed live.** The client only pushes to `/api/timerstate` on state changes (start/pause/phase change/completion), not every second. If the browser crashes or the tab is closed while the timer is running, the last reported state (`IsRunning=true`) persists until the user reopens the app and stops the timer. Automations should therefore check `sensor.studylife_timer_phase_ends` against the current time rather than blindly trusting `binary_sensor.studylife_timer_running`, if this matters.
 - **The completion note (free text) isn't mapped for reading.** `set_course_goal` can write it, but there's no sensor that displays the free text of a completion note — only the target date (`next_course_goal`/`next_course_goal_date`) and grade (`average_grade`) are also available for reading. For the full text, the web UI (Setup or "Analytics" page) is still required.
-- **Time zone:** session times are treated as naive local time, the same way the server itself does (`DateTime.Now`, no UTC). The integration assumes Home Assistant runs in the same time zone as the StudyLife server. `create_session`/`update_session` convert tz-aware inputs (e.g. from the HA datetime selector) accordingly before sending.
+- **Time zone:** session times are treated as naive local time, the same way the server itself does (`DateTime.Now`, no UTC). The integration assumes Home Assistant runs in the same time zone as the StudyAtrium server. `create_session`/`update_session` convert tz-aware inputs (e.g. from the HA datetime selector) accordingly before sending.
 
 ## API key
 
-The StudyLife server protects its entire `/api` with **personal, long-lived API keys** (one per user account; only a SHA-256 hash is stored server-side). The app's own browser client no longer uses an API key at all, but its passkey session instead — the API key exists solely for Home Assistant and similar non-interactive integrations. For this integration, that means:
+The StudyAtrium server protects its entire `/api` with **personal, long-lived API keys** (one per user account; only a SHA-256 hash is stored server-side). The app's own browser client no longer uses an API key at all, but its passkey session instead — the API key exists solely for Home Assistant and similar non-interactive integrations. For this integration, that means:
 
-- **One-time pairing:** generate an API key on the StudyLife app's setup page (the "Home Assistant" card). The plaintext value is shown there **exactly once** — copy it immediately and paste it into the integration's "API key" field. It's attached to every request as an `X-Api-Key` header.
+- **One-time pairing:** generate an API key on the StudyAtrium app's setup page (the "Home Assistant" card). The plaintext value is shown there **exactly once** — copy it immediately and paste it into the integration's "API key" field. It's attached to every request as an `X-Api-Key` header.
 - **No rotation, no expiry:** the key is deliberately long-lived — it stays valid until it's regenerated or revoked in the app. The previous mechanism (a global key, automatic 30-day rotation, `X-Api-Key-Rotated` header) no longer exists; the integration accordingly no longer contains any adoption logic either.
 - **Key regenerated or revoked in the app:** the server responds with `401`, the integration marks itself as "Reauthentication required," and HA shows a reauth dialog — enter the newly generated key from the app there. This is the only case where anything ever needs to be entered manually again.
 

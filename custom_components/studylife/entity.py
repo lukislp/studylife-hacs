@@ -1,10 +1,10 @@
-"""Shared base entities for StudyLife platforms.
+"""Shared base entities for StudyAtrium platforms.
 
 Device layout: one "hub" device per config entry (app-global entities: sessions,
 timer, notes, calendars, course picker, ...) plus one device PER STUDY PROGRAMME
 (built-in and custom, completed or not), each carrying that programme's progress
 sensors. Programme devices hang off the hub via `via_device_id`, so the HA UI shows
-them as children of the StudyLife server they belong to. The hub device is
+them as children of the StudyAtrium server they belong to. The hub device is
 registered in __init__.py before the platforms are set up (see
 async_register_hub_device), because `via_device_id` needs the hub's registry id.
 """
@@ -26,8 +26,8 @@ def hub_device_info(entry: ConfigEntry) -> DeviceInfo:
     """DeviceInfo of the per-config-entry hub device."""
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        name="StudyLife",
-        manufacturer="StudyLife (self-hosted)",
+        name="StudyAtrium",
+        manufacturer="StudyAtrium (self-hosted)",
         model="Blazor WebAssembly app",
         configuration_url=entry.data.get(CONF_URL),
     )
@@ -69,8 +69,8 @@ class StudyLifeEntity(CoordinatorEntity[StudyLifeCoordinator]):
             self._attr_unique_id = f"{entry.entry_id}_program_{program_id}_{key}"
             device_info = DeviceInfo(
                 identifiers={(DOMAIN, f"{entry.entry_id}_program_{program_id}")},
-                name=f"StudyLife — {program_name}",
-                manufacturer="StudyLife (self-hosted)",
+                name=f"StudyAtrium — {program_name}",
+                manufacturer="StudyAtrium (self-hosted)",
                 model="Study programme",
                 configuration_url=entry.data.get(CONF_URL),
             )
@@ -89,7 +89,7 @@ class StudyLifeProgramEntity(StudyLifeEntity):
     """Base for entities scoped to one study programme's device.
 
     When the programme disappears from the coordinator data (deleted via the
-    StudyLife web UI), the entity flips to unavailable instead of being removed
+    StudyAtrium web UI), the entity flips to unavailable instead of being removed
     from the registry - the stale device can then be deleted manually in the HA
     UI. Deliberately no active registry cleanup: simpler, and the standard
     pattern for integrations whose upstream objects can vanish.

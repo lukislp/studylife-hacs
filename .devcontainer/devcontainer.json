@@ -1,5 +1,5 @@
 {
-  "name": "StudyLife Home Assistant integration",
+  "name": "StudyAtrium Home Assistant integration",
   "build": { "dockerfile": "Dockerfile" },
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {}

@@ -12,7 +12,7 @@ fi
 
 cat <<MSG
 
-StudyLife dev container
+StudyAtrium dev container
 
   Run the tests (as CI does):
     pytest tests/ -v --cov=custom_components/studylife --cov-report=json:coverage.json

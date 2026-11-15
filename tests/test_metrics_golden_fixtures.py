@@ -196,7 +196,7 @@ def _raw_summary_from_scenario(scenario: dict[str, Any]) -> dict[str, Any]:
 
 
 _ACTIVE_PROGRAM = StudyProgram(
-    id=None, name="StudyLife", is_built_in=True, is_completed=False
+    id=None, name="StudyAtrium", is_built_in=True, is_completed=False
 )
 
 

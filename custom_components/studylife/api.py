@@ -37,9 +37,9 @@ from .const import REQUEST_TIMEOUT
 # /api/metrics/achievements 404s - see StudyLifeApiEndpointMissingError. Names the README's
 # minimum-version note explicitly so the failure is actionable, not just "something's wrong".
 _METRICS_ENDPOINT_MISSING_HINT = (
-    "the StudyLife server does not expose this endpoint yet - it predates the server release "
+    "the StudyAtrium server does not expose this endpoint yet - it predates the server release "
     "that added Home Assistant metrics support (see this integration's README for the minimum "
-    "StudyLife server version). Update the StudyLife server, then reload this integration."
+    "StudyAtrium server version). Update the StudyAtrium server, then reload this integration."
 )
 
 
@@ -141,7 +141,7 @@ class StudyLifeApiClient:
                     # a generic failure.
                     response.release()
                     raise StudyLifeApiAuthError(
-                        f"API key rejected (401) by {url} - re-pair (StudyLife app's Setup page,"
+                        f"API key rejected (401) by {url} - re-pair (StudyAtrium app's Setup page,"
                         ' "Home Assistant" card)'
                     )
                 if response.status == 404 and missing_endpoint_hint is not None:

@@ -140,7 +140,7 @@ def _display_title(url: str) -> str:
     host = parts.hostname or url
     if parts.port and not (parts.scheme == "https" and parts.port == 443):
         host = f"{host}:{parts.port}"
-    return f"StudyLife Display ({host})"
+    return f"StudyAtrium Display ({host})"
 
 
 class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -194,7 +194,7 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def _create_account_entry(self, url: str, api_key: str) -> ConfigFlowResult:
         return self.async_create_entry(
-            title="StudyLife",
+            title="StudyAtrium",
             data={
                 CONF_URL: url,
                 CONF_API_KEY: api_key,

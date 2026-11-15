@@ -698,7 +698,7 @@ async def test_set_active_program_omitted_switches_to_builtin(
     mock_config_entry.add_to_hass(hass)
     client = AsyncMock()
     builtin = StudyProgram(
-        id=None, name="StudyLife", is_built_in=True, is_completed=False
+        id=None, name="StudyAtrium", is_built_in=True, is_completed=False
     )
     coordinator = make_coordinator(
         client=client,

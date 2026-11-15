@@ -1,4 +1,4 @@
-# Contributing to the StudyLife Home Assistant integration
+# Contributing to the StudyAtrium Home Assistant integration
 
 Thanks for taking the time. This is a single-maintainer project, so the process is deliberately
 small - but it is the same for every change, including the maintainer's own.

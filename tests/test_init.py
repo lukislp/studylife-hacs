@@ -217,7 +217,7 @@ async def test_unload_one_of_two_entries_keeps_services_registered(
     services - the other entry's platforms/services still depend on them."""
     entry1 = MockConfigEntry(
         domain=DOMAIN,
-        title="StudyLife",
+        title="StudyAtrium",
         data={CONF_URL: TEST_URL, CONF_API_KEY: TEST_API_KEY},
         unique_id=TEST_URL,
     )
@@ -447,15 +447,15 @@ async def test_existing_devices_are_reused_without_duplicates(
     old_hub = device_registry.async_get_or_create(
         config_entry_id=entry_id,
         identifiers={(DOMAIN, entry_id)},
-        name="StudyLife",
-        manufacturer="StudyLife (self-hosted)",
+        name="StudyAtrium",
+        manufacturer="StudyAtrium (self-hosted)",
         model="Blazor WebAssembly app",
     )
     old_program = device_registry.async_get_or_create(
         config_entry_id=entry_id,
         identifiers={(DOMAIN, f"{entry_id}_program_builtin")},
-        name="StudyLife — Default",
-        manufacturer="StudyLife (self-hosted)",
+        name="StudyAtrium — Default",
+        manufacturer="StudyAtrium (self-hosted)",
         model="Study programme",
         via_device_id=old_hub.id,
     )
