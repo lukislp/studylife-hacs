@@ -1,6 +1,6 @@
 """Shared base entity for a studylife-display config entry.
 
-One device per entry (unlike the StudyLife account's hub-plus-per-programme layout in
+One device per entry (unlike the StudyAtrium account's hub-plus-per-programme layout in
 entity.py) - a display has nothing analogous to study programmes, and "one config entry,
 one device" is exactly what lets several displays each show up as their own device (see
 const.py's ENTRY_TYPE_DISPLAY and config_flow.py's async_step_display).
@@ -33,11 +33,11 @@ class StudyLifeDisplayEntity(CoordinatorEntity[DisplayCoordinator]):
         self._attr_unique_id = f"{entry.entry_id}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
-            # entry.title defaults to "StudyLife Display (<host>)" (see config_flow.py) so
+            # entry.title defaults to "StudyAtrium Display (<host>)" (see config_flow.py) so
             # several displays are told apart in the flat Settings > Devices list without
             # the user having to rename anything themselves.
             name=entry.title,
-            manufacturer="StudyLife",
+            manufacturer="StudyAtrium",
             model="studylife-display (e-paper)",
             configuration_url=entry.data.get(CONF_URL),
             sw_version=coordinator.data.version if coordinator.data else None,

@@ -574,7 +574,7 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
                 # first and always present, mirroring CoursesController's own fallback.
                 study_programs[0]
                 if study_programs
-                else StudyProgram(None, "StudyLife", True, False),
+                else StudyProgram(None, "StudyAtrium", True, False),
             )
             raw_achievements = await self._client.async_get_metrics_achievements(
                 active_study_program.id if active_study_program.id is not None else 0
@@ -692,7 +692,7 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
             # dataclass docstring) - but a malformed/empty response must degrade to a
             # loud, comprehensible UpdateFailed instead of an unhandled KeyError crash.
             raise UpdateFailed(
-                "StudyLife server returned no study programmes (GET /api/studyprograms "
+                "StudyAtrium server returned no study programmes (GET /api/studyprograms "
                 "was empty) - cannot determine the active programme's metrics"
             )
         active_summary = raw_summary_by_key[active_key]

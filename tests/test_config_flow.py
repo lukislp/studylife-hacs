@@ -98,7 +98,7 @@ async def test_account_step_success(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
     assert result2["type"] == FlowResultType.CREATE_ENTRY
-    assert result2["title"] == "StudyLife"
+    assert result2["title"] == "StudyAtrium"
     assert result2["data"] == {
         CONF_URL: TEST_URL,
         CONF_API_KEY: TEST_API_KEY,
@@ -327,7 +327,7 @@ async def test_reconfigure_url_collision_aborts(
     other_url = "http://other-studylife.local:5000"
     other_entry = MockConfigEntry(
         domain=DOMAIN,
-        title="StudyLife",
+        title="StudyAtrium",
         data={CONF_URL: other_url, CONF_API_KEY: "other-key"},
         unique_id=other_url,
     )
@@ -369,7 +369,7 @@ async def test_display_step_success(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
 
     assert result2["type"] == FlowResultType.CREATE_ENTRY
-    assert result2["title"] == "StudyLife Display (studylife-display.local:8795)"
+    assert result2["title"] == "StudyAtrium Display (studylife-display.local:8795)"
     assert result2["data"] == {
         CONF_URL: TEST_DISPLAY_URL,
         CONF_API_TOKEN: TEST_DISPLAY_TOKEN,
@@ -649,7 +649,7 @@ async def test_zeroconf_confirm_creates_display_entry(hass: HomeAssistant) -> No
         await hass.async_block_till_done()
 
     assert result2["type"] == FlowResultType.CREATE_ENTRY
-    assert result2["title"] == "StudyLife Display (studylife-display.local:8795)"
+    assert result2["title"] == "StudyAtrium Display (studylife-display.local:8795)"
     assert result2["data"] == {
         CONF_URL: TEST_DISPLAY_URL,
         CONF_API_TOKEN: TEST_DISPLAY_TOKEN,
@@ -994,7 +994,7 @@ async def test_server_zeroconf_confirm_creates_account_entry(
         await hass.async_block_till_done()
 
     assert result2["type"] == FlowResultType.CREATE_ENTRY
-    assert result2["title"] == "StudyLife"
+    assert result2["title"] == "StudyAtrium"
     assert result2["data"] == {
         CONF_URL: SERVER_URL,
         CONF_API_KEY: TEST_API_KEY,

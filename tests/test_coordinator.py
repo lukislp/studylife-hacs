@@ -120,8 +120,8 @@ async def test_metrics_endpoint_missing_maps_to_update_failed_with_clear_message
     specific, actionable message, not crash cryptically or silently degrade - the
     exact deploy-order failure mode docs/api's metrics contract calls out."""
     mock_api_client.async_get_metrics_summary.side_effect = StudyLifeApiEndpointMissingError(
-        "GET http://x/api/metrics/summary returned 404 - the StudyLife server does not "
-        "expose this endpoint yet. Update the StudyLife server, then reload this integration."
+        "GET http://x/api/metrics/summary returned 404 - the StudyAtrium server does not "
+        "expose this endpoint yet. Update the StudyAtrium server, then reload this integration."
     )
 
     coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))
@@ -130,14 +130,14 @@ async def test_metrics_endpoint_missing_maps_to_update_failed_with_clear_message
     assert coordinator.last_update_success is False
     assert isinstance(coordinator.last_exception, UpdateFailed)
     assert "does not expose this endpoint yet" in str(coordinator.last_exception)
-    assert "Update the StudyLife server" in str(coordinator.last_exception)
+    assert "Update the StudyAtrium server" in str(coordinator.last_exception)
 
 
 async def test_metrics_achievements_endpoint_missing_also_maps_to_update_failed(
     hass: HomeAssistant, mock_api_client: AsyncMock
 ) -> None:
     mock_api_client.async_get_metrics_achievements.side_effect = StudyLifeApiEndpointMissingError(
-        "GET http://x/api/metrics/achievements returned 404 - update the StudyLife server."
+        "GET http://x/api/metrics/achievements returned 404 - update the StudyAtrium server."
     )
 
     coordinator = StudyLifeCoordinator(hass, mock_api_client, timedelta(seconds=30))

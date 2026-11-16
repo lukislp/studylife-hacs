@@ -34,7 +34,7 @@ def mock_config_entry() -> MockConfigEntry:
     """A single-programme StudyLife config entry, not yet added to hass."""
     return MockConfigEntry(
         domain=DOMAIN,
-        title="StudyLife",
+        title="StudyAtrium",
         data={CONF_URL: TEST_URL, CONF_API_KEY: TEST_API_KEY},
         unique_id=TEST_URL,
     )
@@ -323,7 +323,7 @@ def mock_display_config_entry() -> MockConfigEntry:
     """A single studylife-display config entry, not yet added to hass."""
     return MockConfigEntry(
         domain=DOMAIN,
-        title="StudyLife Display (studylife-display.local:8795)",
+        title="StudyAtrium Display (studylife-display.local:8795)",
         data={
             CONF_URL: TEST_DISPLAY_URL,
             CONF_API_TOKEN: TEST_DISPLAY_TOKEN,

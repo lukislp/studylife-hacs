@@ -3,43 +3,43 @@
     "flow_title": "{name}",
     "step": {
       "user": {
-        "title": "StudyLife hinzufügen",
+        "title": "StudyAtrium hinzufügen",
         "description": "Was soll hinzugefügt werden?",
         "menu_options": {
-          "account": "StudyLife-Konto (Server)",
+          "account": "StudyAtrium-Konto (Server)",
           "display": "studylife-display-Panel"
         }
       },
       "account": {
-        "title": "StudyLife verbinden",
-        "description": "Basis-URL des selbst gehosteten StudyLife-Servers, z. B. {example}. Der Server schützt seine API mit persönlichen API-Keys — den Key auf der Setup-Seite der StudyLife-App generieren (Karte „Home Assistant“) und hier einfügen.",
+        "title": "StudyAtrium verbinden",
+        "description": "Basis-URL des selbst gehosteten StudyAtrium-Servers, z. B. {example}. Der Server schützt seine API mit persönlichen API-Keys — den Key auf der Setup-Seite der StudyAtrium-App generieren (Karte „Home Assistant“) und hier einfügen.",
         "data": {
           "url": "URL",
           "api_key": "API-Key"
         },
         "data_description": {
-          "api_key": "Einmaliger Kopplungsschritt: Key auf der Setup-Seite der StudyLife-App generieren (Karte „Home Assistant“) und den angezeigten Wert kopieren. Der Key ist langlebig — er rotiert nie und läuft nicht ab; er wird nur ungültig, wenn er in der App neu generiert oder widerrufen wird."
+          "api_key": "Einmaliger Kopplungsschritt: Key auf der Setup-Seite der StudyAtrium-App generieren (Karte „Home Assistant“) und den angezeigten Wert kopieren. Der Key ist langlebig — er rotiert nie und läuft nicht ab; er wird nur ungültig, wenn er in der App neu generiert oder widerrufen wird."
         }
       },
       "reauth_confirm": {
-        "title": "StudyLife neu koppeln",
-        "description": "Der gespeicherte API-Key wird vom Server nicht mehr akzeptiert — er wurde in der StudyLife-App neu generiert oder widerrufen (von selbst läuft er nie ab). Auf der Setup-Seite der App (Karte „Home Assistant“) einen Key generieren und den neuen Wert hier einfügen.",
+        "title": "StudyAtrium neu koppeln",
+        "description": "Der gespeicherte API-Key wird vom Server nicht mehr akzeptiert — er wurde in der StudyAtrium-App neu generiert oder widerrufen (von selbst läuft er nie ab). Auf der Setup-Seite der App (Karte „Home Assistant“) einen Key generieren und den neuen Wert hier einfügen.",
         "data": {
           "api_key": "API-Key"
         },
         "data_description": {
-          "api_key": "Neuen Key auf der Setup-Seite der StudyLife-App generieren (Karte „Home Assistant“) und den angezeigten Wert kopieren."
+          "api_key": "Neuen Key auf der Setup-Seite der StudyAtrium-App generieren (Karte „Home Assistant“) und den angezeigten Wert kopieren."
         }
       },
       "reconfigure_confirm": {
-        "title": "StudyLife neu konfigurieren",
+        "title": "StudyAtrium neu konfigurieren",
         "description": "URL und/oder API-Key dieser Verbindung anpassen — z. B. wenn sich die Server-Adresse geändert hat oder bei der Ersteinrichtung ein Tippfehler passiert ist.",
         "data": {
           "url": "URL",
           "api_key": "API-Key"
         },
         "data_description": {
-          "api_key": "Bei geänderter Server-Adresse reicht meist der bestehende Key. Wird ein neuer benötigt: auf der Setup-Seite der StudyLife-App generieren (Karte „Home Assistant“) und den angezeigten Wert kopieren."
+          "api_key": "Bei geänderter Server-Adresse reicht meist der bestehende Key. Wird ein neuer benötigt: auf der Setup-Seite der StudyAtrium-App generieren (Karte „Home Assistant“) und den angezeigten Wert kopieren."
         }
       },
       "display": {
@@ -84,22 +84,22 @@
         }
       },
       "zeroconf_server_confirm": {
-        "title": "StudyLife-Server hinzufügen",
-        "description": "Unter {url} wurde ein StudyLife-Server gefunden. Der Server schützt seine API mit persönlichen API-Schlüsseln — erzeuge auf der Setup-Seite der StudyLife-App (Karte \"Home Assistant\") einen und füge ihn hier ein.",
+        "title": "StudyAtrium-Server hinzufügen",
+        "description": "Unter {url} wurde ein StudyAtrium-Server gefunden. Der Server schützt seine API mit persönlichen API-Schlüsseln — erzeuge auf der Setup-Seite der StudyAtrium-App (Karte \"Home Assistant\") einen und füge ihn hier ein.",
         "data": {
           "api_key": "API-Schlüssel"
         },
         "data_description": {
-          "api_key": "Einmaliger Kopplungsschritt: Erzeuge auf der Setup-Seite der StudyLife-App (Karte \"Home Assistant\") einen Schlüssel und kopiere den angezeigten Wert. Der Schlüssel ist langlebig — er rotiert und läuft nie ab; er wird nur ungültig, wenn du ihn in der App neu erzeugst oder widerrufst."
+          "api_key": "Einmaliger Kopplungsschritt: Erzeuge auf der Setup-Seite der StudyAtrium-App (Karte \"Home Assistant\") einen Schlüssel und kopiere den angezeigten Wert. Der Schlüssel ist langlebig — er rotiert und läuft nie ab; er wird nur ungültig, wenn du ihn in der App neu erzeugst oder widerrufst."
         }
       }
     },
     "error": {
       "cannot_connect": "Verbindung fehlgeschlagen. URL prüfen und sicherstellen, dass Server/Display erreichbar ist.",
-      "invalid_auth": "Die Zugangsdaten wurden abgelehnt. Bei einem StudyLife-Konto: auf der Setup-Seite der App einen neuen Key generieren. Bei einem Display: DISPLAY_API_TOKEN dort mit dem hier eingegebenen Wert abgleichen — ein 404 dort bedeutet auch, dass die JSON-API des Displays ausgeschaltet ist."
+      "invalid_auth": "Die Zugangsdaten wurden abgelehnt. Bei einem StudyAtrium-Konto: auf der Setup-Seite der App einen neuen Key generieren. Bei einem Display: DISPLAY_API_TOKEN dort mit dem hier eingegebenen Wert abgleichen — ein 404 dort bedeutet auch, dass die JSON-API des Displays ausgeschaltet ist."
     },
     "abort": {
-      "already_configured": "Dieser StudyLife-Server oder dieses Display ist bereits eingerichtet.",
+      "already_configured": "Dieser StudyAtrium-Server oder dieses Display ist bereits eingerichtet.",
       "reauth_successful": "Neu-Kopplung erfolgreich.",
       "reconfigure_successful": "Neu konfiguriert.",
       "api_disabled": "Das Display wurde gefunden, aber seine JSON-API ist aus: Setze zuerst DISPLAY_API_TOKEN darauf (siehe dessen README).",
@@ -109,7 +109,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "StudyLife-Optionen",
+        "title": "StudyAtrium-Optionen",
         "data": {
           "scan_interval": "Abfrageintervall (Sekunden)"
         }
@@ -206,16 +206,16 @@
   },
   "issues": {
     "display_key_rejected": {
-      "title": "StudyLife-Key von {name} abgelehnt",
-      "description": "Der StudyLife-Key des Displays {name} wurde abgelehnt. Verbinde es neu unter {url}/connect."
+      "title": "StudyAtrium-Key von {name} abgelehnt",
+      "description": "Der StudyAtrium-Key des Displays {name} wurde abgelehnt. Verbinde es neu unter {url}/connect."
     },
     "display_no_data": {
       "title": "{name} hat keine Daten",
-      "description": "Das Display {name} hat noch nie StudyLife-Daten abgerufen. Prüfe die StudyLife-Verbindung unter {url}/connect."
+      "description": "Das Display {name} hat noch nie StudyAtrium-Daten abgerufen. Prüfe die StudyAtrium-Verbindung unter {url}/connect."
     },
     "display_stale": {
       "title": "{name} zeigt veraltete Daten",
-      "description": "Das Display {name} zeigt StudyLife-Daten, die älter als eine Stunde sind. Prüfe seine Netzwerkverbindung und die StudyLife-Verbindung unter {url}."
+      "description": "Das Display {name} zeigt StudyAtrium-Daten, die älter als eine Stunde sind. Prüfe seine Netzwerkverbindung und die StudyAtrium-Verbindung unter {url}."
     },
     "display_sessions_scope": {
       "title": "{name} kann keine Sessions lesen",
@@ -229,9 +229,9 @@
   "services": {
     "create_session": {
       "name": "Session anlegen",
-      "description": "Legt eine neue Lerneinheit in StudyLife an.",
+      "description": "Legt eine neue Lerneinheit in StudyAtrium an.",
       "fields": {
-        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyAtrium-Server konfiguriert sind." },
         "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses. Muss im Kurskatalog vorhanden sein (eingebaut oder eigen)." },
         "course_name": { "name": "Kursname (veraltet)", "description": "Veraltet, wird ignoriert. Der Server leitet den Kursnamen jetzt aus dem Katalog ab." },
         "course_color": { "name": "Kursfarbe (veraltet)", "description": "Veraltet, wird ignoriert. Der Server leitet die Kursfarbe jetzt aus dem Katalog ab." },
@@ -246,7 +246,7 @@
       "name": "Session bearbeiten",
       "description": "Ändert einzelne Felder einer bestehenden Session (nur angegebene Felder werden geändert, Rest bleibt erhalten).",
       "fields": {
-        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyAtrium-Server konfiguriert sind." },
         "session_id": { "name": "Session-ID", "description": "ID der zu bearbeitenden Session." },
         "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses. Muss im Kurskatalog vorhanden sein (eingebaut oder eigen), wenn der Kurs der Session geändert wird." },
         "course_name": { "name": "Kursname (veraltet)", "description": "Veraltet, wird ignoriert. Der Server leitet den Kursnamen jetzt aus dem Katalog ab." },
@@ -263,7 +263,7 @@
       "name": "Session löschen",
       "description": "Löscht eine Lerneinheit anhand ihrer Session-ID.",
       "fields": {
-        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyAtrium-Server konfiguriert sind." },
         "session_id": { "name": "Session-ID", "description": "ID der zu löschenden Session (siehe Sensor-Attribute oder Kalender)." }
       }
     },
@@ -271,7 +271,7 @@
       "name": "Kursziel setzen",
       "description": "Legt Zieldatum, Note und/oder Abschluss-Notiz für einen Kurs an oder aktualisiert sie.",
       "fields": {
-        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyAtrium-Server konfiguriert sind." },
         "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses. Muss im Kurskatalog vorhanden sein (eingebaut oder eigen)." },
         "course_name": { "name": "Kursname (veraltet)", "description": "Veraltet, wird ignoriert. Der Server leitet den Kursnamen jetzt aus dem Katalog ab." },
         "target_date": { "name": "Ziel-Datum", "description": "Gewünschtes Abschlussdatum." },
@@ -283,7 +283,7 @@
       "name": "Prüfungsplan generieren",
       "description": "Verteilt die noch offenen Themen eines Kurses automatisch als Lernsessions auf freie Zeitfenster im Kalender bis zum Prüfungstermin.",
       "fields": {
-        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyAtrium-Server konfiguriert sind." },
         "course_id": { "name": "Kurs-ID", "description": "Numerische ID des Kurses." },
         "exam_date": { "name": "Prüfungstermin", "description": "Datum der Prüfung. Sessions werden bis zum Vortag geplant." },
         "session_length_minutes": { "name": "Sessionlänge (Minuten)", "description": "Länge je vorgeschlagener Session. Standard: 90." },
@@ -292,20 +292,20 @@
     },
     "set_active_program": {
       "name": "Aktiven Studiengang wechseln",
-      "description": "Setzt, welcher Studiengang in der StudyLife-App selbst aktiv ist (Kursauswahl, Web-Dashboard). In Home Assistant bleiben unabhängig davon alle Studiengänge als eigene Geräte mit eigenen Sensoren sichtbar - nur die kursbezogenen Hub-Entitäten (Kurs-Picker, Kursziel-Kalender, aufgelöste Kurslisten) folgen dem Wechsel.",
+      "description": "Setzt, welcher Studiengang in der StudyAtrium-App selbst aktiv ist (Kursauswahl, Web-Dashboard). In Home Assistant bleiben unabhängig davon alle Studiengänge als eigene Geräte mit eigenen Sensoren sichtbar - nur die kursbezogenen Hub-Entitäten (Kurs-Picker, Kursziel-Kalender, aufgelöste Kurslisten) folgen dem Wechsel.",
       "fields": {
-        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyLife-Server konfiguriert sind." },
+        "device_id": { "name": "Gerät", "description": "Nur nötig, wenn mehrere StudyAtrium-Server konfiguriert sind." },
         "program_id": { "name": "Studiengang-ID", "description": "ID des Studiengangs (siehe sensor.studylife_active_program, Attribut 'programs'). Weglassen, um zum eingebauten Studiengang zurückzuwechseln." }
       }
     }
   },
   "exceptions": {
-    "no_integration_configured": { "message": "Keine StudyLife-Integration konfiguriert." },
+    "no_integration_configured": { "message": "Keine StudyAtrium-Integration konfiguriert." },
     "unknown_device": { "message": "Unbekanntes Gerät: {device_id}" },
-    "device_not_studylife": { "message": "Dieses Gerät gehört zu keiner StudyLife-Integration." },
-    "multiple_servers_need_device_id": { "message": "Mehrere StudyLife-Server konfiguriert - bitte device_id im Service-Aufruf angeben." },
-    "course_not_in_catalog": { "message": "Kurs-ID {course_id} existiert nicht. Es muss ein Kurs aus dem StudyLife-Katalog sein (eingebaut oder eigen, siehe /api/courses) - der Server akzeptiert eine unbekannte course_id nicht mehr, auch nicht mit manuell angegebenem course_name." },
-    "course_rejected_by_server": { "message": "StudyLife hat Kurs-ID {course_id} abgelehnt - die Kursliste hat sich möglicherweise geändert. Diese Integration aktualisiert ihren Kurskatalog beim nächsten Abrufzyklus (oder die Integration jetzt neu laden, um ihn sofort zu aktualisieren) - danach erneut versuchen." },
+    "device_not_studylife": { "message": "Dieses Gerät gehört zu keiner StudyAtrium-Integration." },
+    "multiple_servers_need_device_id": { "message": "Mehrere StudyAtrium-Server konfiguriert - bitte device_id im Service-Aufruf angeben." },
+    "course_not_in_catalog": { "message": "Kurs-ID {course_id} existiert nicht. Es muss ein Kurs aus dem StudyAtrium-Katalog sein (eingebaut oder eigen, siehe /api/courses) - der Server akzeptiert eine unbekannte course_id nicht mehr, auch nicht mit manuell angegebenem course_name." },
+    "course_rejected_by_server": { "message": "StudyAtrium hat Kurs-ID {course_id} abgelehnt - die Kursliste hat sich möglicherweise geändert. Diese Integration aktualisiert ihren Kurskatalog beim nächsten Abrufzyklus (oder die Integration jetzt neu laden, um ihn sofort zu aktualisieren) - danach erneut versuchen." },
     "session_not_found": { "message": "Session {session_id} wurde nicht gefunden." },
     "unknown_program": { "message": "Studiengang-ID {program_id} ist nicht bekannt (sensor.studylife_active_program, Attribut 'programs')." }
   }

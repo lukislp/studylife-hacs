@@ -27,7 +27,7 @@ def _make_entry() -> MockConfigEntry:
     only read entry.entry_id and entry.data, both available right after construction."""
     return MockConfigEntry(
         domain=DOMAIN,
-        title="StudyLife",
+        title="StudyAtrium",
         data={CONF_URL: TEST_URL, CONF_API_KEY: TEST_API_KEY},
         unique_id=TEST_URL,
     )
@@ -60,7 +60,7 @@ def test_hub_entity_unique_id_and_device_info() -> None:
     assert entity.unique_id == f"{entry.entry_id}_week_hours"
     assert entity.device_info is not None
     assert entity.device_info["identifiers"] == {(DOMAIN, entry.entry_id)}
-    assert entity.device_info["name"] == "StudyLife"
+    assert entity.device_info["name"] == "StudyAtrium"
     assert "via_device" not in entity.device_info
     assert "via_device_id" not in entity.device_info
 
@@ -86,7 +86,7 @@ def test_program_entity_unique_id_and_device_info() -> None:
     assert entity.device_info["identifiers"] == {
         (DOMAIN, f"{entry.entry_id}_program_5")
     }
-    assert entity.device_info["name"] == "StudyLife — Master's"
+    assert entity.device_info["name"] == "StudyAtrium — Master's"
     # The parent is referenced by its device registry id; the deprecated
     # `via_device` identifier tuple (removed in HA 2027.8) is never set.
     assert entity.device_info["via_device_id"] == "hub-device-id"
