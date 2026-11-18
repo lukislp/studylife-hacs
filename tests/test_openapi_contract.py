@@ -1,4 +1,4 @@
-"""Contract tests against StudyLife's committed OpenAPI spec (`docs/api/openapi.json` in the
+"""Contract tests against StudyAtrium's committed OpenAPI spec (`docs/api/openapi.json` in the
 main `studylife` repo) - audit finding D2/D3, the same pattern already landed in
 studylife-ai's tests/contract/test_openapi_contract.py (read-only reference for this module).
 custom_components/studylife/api.py hardcodes every endpoint path/method it calls with zero
@@ -36,7 +36,7 @@ DEFAULT_SPEC_URL = (
 )
 SPEC_HOST = "raw.githubusercontent.com"
 
-# Every StudyLife endpoint custom_components/studylife/api.py calls, read exhaustively from
+# Every StudyAtrium endpoint custom_components/studylife/api.py calls, read exhaustively from
 # that file's `self._get(...)`/`self._request(...)` call sites (its only HTTP call sites -
 # services.py/config_flow.py/coordinator.py all go through this same client, never directly).
 CALLED_ENDPOINTS: list[tuple[str, str]] = [
@@ -56,7 +56,7 @@ CALLED_ENDPOINTS: list[tuple[str, str]] = [
     # called - it existed only to feed _calc_ects_progress's group-quota fallback, which is
     # gone now that GET /api/metrics/summary returns ectsEarned/ectsTotal pre-computed (the
     # owner decision behind this whole change: every metric lives in exactly ONE place,
-    # StudyLife). Pruned from this inventory rather than left stale - see coordinator.py's
+    # StudyAtrium). Pruned from this inventory rather than left stale - see coordinator.py's
     # module docstring for the removal.
     ("GET", "/api/timerstate"),  # async_get_timer_state()
     ("GET", "/api/metrics/summary"),  # async_get_metrics_summary()
@@ -95,7 +95,7 @@ def spec() -> dict[str, Any]:
     except (urllib.error.URLError, OSError, ValueError) as exc:
         if _is_ci():
             pytest.fail(
-                f"Could not load the StudyLife OpenAPI spec from {source!r} in CI - contract "
+                f"Could not load the StudyAtrium OpenAPI spec from {source!r} in CI - contract "
                 f"tests MUST fail here, not skip (that's the point of the check): {exc!r}"
             )
         if explicit:
@@ -149,7 +149,7 @@ def test_called_endpoint_exists_in_spec(
     template = _find_matching_path_template(spec_paths, path)
     assert template is not None, (
         f"{method} {path} is called by custom_components/studylife/api.py but no matching "
-        f"path exists in the StudyLife OpenAPI spec's `paths` - the endpoint was removed or "
+        f"path exists in the StudyAtrium OpenAPI spec's `paths` - the endpoint was removed or "
         f"renamed server-side (or api.py has a typo). Spec paths: {sorted(spec_paths)}"
     )
     methods_at_path = {m.lower() for m in spec_paths[template]}

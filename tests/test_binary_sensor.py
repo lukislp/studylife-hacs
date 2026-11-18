@@ -1,4 +1,4 @@
-"""Tests for the StudyLife binary_sensor platform
+"""Tests for the StudyAtrium binary_sensor platform
 (custom_components/studylife/binary_sensor.py).
 
 Same approach as test_sensor.py: drives the real integration setup path (see
@@ -242,7 +242,7 @@ async def test_deleted_programme_binary_sensor_becomes_unavailable(
     assert master_id is not None
     assert hass.states.get(master_id).state == STATE_ON
 
-    # "Master" is deleted in StudyLife - the next poll no longer lists it.
+    # "Master" is deleted in StudyAtrium - the next poll no longer lists it.
     mock_api_client.async_get_study_programs.return_value = [
         make_raw_study_program(id=None, name="Bachelor", is_built_in=True),
     ]

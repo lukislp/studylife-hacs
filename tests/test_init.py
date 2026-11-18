@@ -1,4 +1,4 @@
-"""Tests for the StudyLife integration's setup/unload entry points
+"""Tests for the StudyAtrium integration's setup/unload entry points
 (custom_components/studylife/__init__.py)."""
 
 from __future__ import annotations
@@ -224,7 +224,7 @@ async def test_unload_one_of_two_entries_keeps_services_registered(
     other_url = "http://other-studylife.local:5000"
     entry2 = MockConfigEntry(
         domain=DOMAIN,
-        title="StudyLife (other)",
+        title="StudyAtrium (other)",
         data={CONF_URL: other_url, CONF_API_KEY: "other-key"},
         unique_id=other_url,
     )

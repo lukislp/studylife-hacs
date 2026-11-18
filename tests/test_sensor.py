@@ -1,4 +1,4 @@
-"""Tests for the StudyLife sensor platform (custom_components/studylife/sensor.py).
+"""Tests for the StudyAtrium sensor platform (custom_components/studylife/sensor.py).
 
 Exercises the real integration setup path (see conftest.setup_integration) rather
 than instantiating entities directly, so these tests cover the same wiring HA
@@ -212,7 +212,7 @@ async def test_programme_added_later_gets_entities_via_coordinator_listener(
     )
     assert _sensor_id(hass, mock_config_entry, "ects_progress", program_id="9") is None
 
-    # A programme created later via the StudyLife web UI shows up on the next poll.
+    # A programme created later via the StudyAtrium web UI shows up on the next poll.
     mock_api_client.async_get_study_programs.return_value = [
         make_raw_study_program(id=None, name="Bachelor", is_built_in=True),
         make_raw_study_program(id=9, name="New Programme", is_built_in=False),
@@ -263,7 +263,7 @@ async def test_deleted_programme_entity_becomes_unavailable(
     assert master_id is not None
     assert hass.states.get(master_id).state != STATE_UNAVAILABLE
 
-    # "Master" is deleted in StudyLife - the next poll no longer lists it.
+    # "Master" is deleted in StudyAtrium - the next poll no longer lists it.
     mock_api_client.async_get_study_programs.return_value = [
         make_raw_study_program(id=None, name="Bachelor", is_built_in=True),
     ]

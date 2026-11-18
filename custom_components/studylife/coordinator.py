@@ -1,4 +1,4 @@
-"""Data update coordinator for StudyLife.
+"""Data update coordinator for StudyAtrium.
 
 Fetches /api/sessions, /api/settings, /api/notes and /api/metrics/{summary,achievements},
 then maps them onto the same dataclasses the platforms (sensor.py, binary_sensor.py,
@@ -19,7 +19,7 @@ directly; see CHANGELOG/README for the resulting minimum StudyLife server versio
 
 Session StartTime/EndTime are naive local timestamps (no timezone info), just like the
 server treats them (DateTime.Now, never UtcNow, for these fields). We compare against this
-Home Assistant instance's local wall-clock time, which assumes StudyLife and Home Assistant
+Home Assistant instance's local wall-clock time, which assumes StudyAtrium and Home Assistant
 run in the same timezone - the same assumption GET /api/metrics/summary's server-side `now`
 makes.
 
@@ -255,7 +255,7 @@ class StudyLifeData:
 
 
 def _parse_dt(value: str) -> datetime:
-    """Parse a naive local datetime string as returned by the StudyLife API."""
+    """Parse a naive local datetime string as returned by the StudyAtrium API."""
     parsed = datetime.fromisoformat(value)
     return parsed.replace(tzinfo=None)
 
@@ -505,7 +505,7 @@ def _parse_achievements(raw: dict[str, Any]) -> tuple[list[Achievement], int]:
 
 
 class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
-    """Coordinates polling of the StudyLife API."""
+    """Coordinates polling of the StudyAtrium API."""
 
     def __init__(
         self,
@@ -588,7 +588,7 @@ class StudyLifeCoordinator(DataUpdateCoordinator[StudyLifeData]):
             raise ConfigEntryAuthFailed(str(err)) from err
         except StudyLifeApiError as err:
             # Also covers StudyLifeApiEndpointMissingError (a 404 from either new metrics
-            # endpoint, i.e. a too-old StudyLife server) - its message is already specific
+            # endpoint, i.e. a too-old StudyAtrium server) - its message is already specific
             # and actionable, so it needs no special-casing here: UpdateFailed(str(err))
             # surfaces it verbatim as a Home Assistant repair/notification instead of a
             # generic, cryptic failure.

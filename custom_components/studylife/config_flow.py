@@ -1,4 +1,4 @@
-"""Config flow for StudyLife.
+"""Config flow for StudyAtrium.
 
 Two kinds of entry share this one flow, chosen from a menu on the very first step:
 "account" (a StudyLife server, the original and only kind before displays existed) and
@@ -144,7 +144,7 @@ def _display_title(url: str) -> str:
 
 
 class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for StudyLife."""
+    """Handle a config flow for StudyAtrium."""
 
     VERSION = 1
 
@@ -156,7 +156,7 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         return self.async_show_menu(step_id="user", menu_options=["account", "display"])
 
-    # -- StudyLife account ----------------------------------------------------------
+    # -- StudyAtrium account ----------------------------------------------------------
 
     async def async_step_account(
         self, user_input: dict[str, Any] | None = None
@@ -505,7 +505,7 @@ class StudyLifeConfigFlow(ConfigFlow, domain=DOMAIN):
     async def _async_zeroconf_server(
         self, discovery_info: ZeroconfServiceInfo
     ) -> ConfigFlowResult:
-        """A StudyLife server announced itself via DNS-SD (_studylife._tcp)."""
+        """A StudyAtrium server announced itself via DNS-SD (_studylife._tcp)."""
         properties = discovery_info.properties
         host = discovery_info.hostname.rstrip(".") or str(discovery_info.ip_address)
         port = discovery_info.port
@@ -744,7 +744,7 @@ def _entry_type(entry: ConfigEntry) -> str:
 
 
 class StudyLifeOptionsFlow(OptionsFlow):
-    """Handle StudyLife options (poll interval) - the same one field for both entry
+    """Handle StudyAtrium options (poll interval) - the same one field for both entry
     kinds, just a different default (see const.py's DEFAULT_DISPLAY_SCAN_INTERVAL)."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:

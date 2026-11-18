@@ -115,7 +115,7 @@ async def test_api_error_maps_to_update_failed(
 async def test_metrics_endpoint_missing_maps_to_update_failed_with_clear_message(
     hass: HomeAssistant, mock_api_client: AsyncMock
 ) -> None:
-    """A 404 from GET /api/metrics/summary (a too-old StudyLife server - see
+    """A 404 from GET /api/metrics/summary (a too-old StudyAtrium server - see
     api.py's StudyLifeApiEndpointMissingError) must fail the refresh LOUDLY with a
     specific, actionable message, not crash cryptically or silently degrade - the
     exact deploy-order failure mode docs/api's metrics contract calls out."""

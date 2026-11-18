@@ -1,8 +1,8 @@
-"""Constants for the StudyLife integration."""
+"""Constants for the StudyAtrium integration."""
 
 DOMAIN = "studylife"
 
-# Two kinds of config entry share this one domain: a StudyLife server account (the
+# Two kinds of config entry share this one domain: a StudyAtrium server account (the
 # original, default kind - see config_flow.py's async_step_account) and, since the
 # studylife-display JSON API (DISPLAY_API_TOKEN) landed, an optional studylife-display
 # e-paper panel on the LAN (async_step_display) - each its own device, any number of
@@ -16,7 +16,7 @@ CONF_SCAN_INTERVAL = "scan_interval"
 # The display's stable id (studylife-display >= the release that publishes it), kept in
 # the entry data so discovery can recognise the display even when the entry is not loaded.
 CONF_DISPLAY_ID = "display_id"
-# The StudyLife server's stable instance id (GET /api/instance, also the TXT "id" of its
+# The StudyAtrium server's stable instance id (GET /api/instance, also the TXT "id" of its
 # mDNS announcement), kept in the account entry data so discovery recognises an already
 # configured server whatever URL it is configured or announced under.
 CONF_INSTANCE_ID = "instance_id"

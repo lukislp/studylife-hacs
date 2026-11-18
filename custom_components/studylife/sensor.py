@@ -1,4 +1,4 @@
-"""Sensors mirroring the StudyLife dashboard (Client/Pages/Index.razor).
+"""Sensors mirroring the StudyAtrium dashboard (Client/Pages/Index.razor).
 
 Two kinds:
 
@@ -423,7 +423,7 @@ SENSOR_DESCRIPTIONS: tuple[StudyLifeSensorDescription, ...] = (
         },
     ),
     StudyLifeSensorDescription(
-        # Which study programme (Studiengang) the StudyLife APP itself currently
+        # Which study programme (Studiengang) the StudyAtrium APP itself currently
         # treats as active/default. Every programme has its own HA device with its
         # own progress sensors regardless of this - only the hub's active-catalog
         # bits (course picker, motivational_style's resolved courses, the goals
@@ -624,7 +624,7 @@ async def async_setup_entry(
     # One full per-programme sensor set per study programme. The first refresh has
     # already happened (async_config_entry_first_refresh in __init__.py), so the
     # initial sync-call below sees the complete programme list; the coordinator
-    # listener then picks up programmes created later via the StudyLife web UI and
+    # listener then picks up programmes created later via the StudyAtrium web UI and
     # adds their entity sets on the fly. Programmes that disappear are NOT removed
     # here - their entities go unavailable via StudyLifeProgramEntity.available.
     known_program_ids: set[str] = set()
@@ -652,7 +652,7 @@ async def async_setup_entry(
 
 
 class StudyLifeSensor(StudyLifeEntity, SensorEntity):
-    """A single StudyLife metric, derived from the polled dashboard data."""
+    """A single StudyAtrium metric, derived from the polled dashboard data."""
 
     entity_description: StudyLifeSensorDescription
 
