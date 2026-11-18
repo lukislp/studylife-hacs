@@ -327,6 +327,10 @@ The first start takes a few minutes, because Home Assistant installs its fronten
 
 Run the tests with `pytest tests/ -v --cov=custom_components/studylife --cov-report=json:coverage.json`. More in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Privacy
+
+See [PRIVACY.md](PRIVACY.md) for what this integration stores and where data goes.
+
 ## License
 
 [MIT](LICENSE).
