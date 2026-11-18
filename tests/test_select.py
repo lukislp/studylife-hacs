@@ -1,4 +1,4 @@
-"""Tests for the StudyLife active-course select entity (select.py).
+"""Tests for the StudyAtrium active-course select entity (select.py).
 
 `StudyLifeActiveCourseSelect` is a pure local picker - it never calls the API
 client itself, so these tests build the entity directly against a fake

@@ -1,4 +1,4 @@
-"""Services to manage StudyLife sessions and course goals from Home Assistant.
+"""Services to manage StudyAtrium sessions and course goals from Home Assistant.
 
 Mirrors what the Calendar/Setup pages do client-side (POST/PUT/DELETE
 /api/sessions, PUT /api/coursegoals/{courseId}) - see docs/ARCHITECTURE.md
@@ -345,7 +345,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
         await coordinator.async_request_refresh()
 
     async def handle_set_active_program(call: ServiceCall) -> None:
-        # Switches which programme the StudyLife APP itself treats as active/default
+        # Switches which programme the StudyAtrium APP itself treats as active/default
         # (course selection, dashboard, session scoping in the web UI). HA-side this
         # no longer gates visibility - every programme keeps its own device either
         # way; only the hub's active-catalog bits (course picker, goals calendar,

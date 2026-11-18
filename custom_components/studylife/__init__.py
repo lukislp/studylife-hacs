@@ -1,4 +1,4 @@
-"""The StudyLife integration."""
+"""The StudyAtrium integration."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ PLATFORMS_DISPLAY: list[Platform] = [
 
 def _entry_type(entry: ConfigEntry) -> str:
     # Entries created before ENTRY_TYPE_DISPLAY existed carry no CONF_ENTRY_TYPE at all -
-    # every one of those is a StudyLife account, so that absence defaults to ACCOUNT
+    # every one of those is a StudyAtrium account, so that absence defaults to ACCOUNT
     # rather than requiring a migration step.
     return entry.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_ACCOUNT)
 

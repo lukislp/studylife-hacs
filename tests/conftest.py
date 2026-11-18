@@ -1,4 +1,4 @@
-"""Shared fixtures for the StudyLife integration test suite."""
+"""Shared fixtures for the StudyAtrium integration test suite."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ TEST_DISPLAY_TOKEN = "test-display-token"
 
 @pytest.fixture
 def mock_config_entry() -> MockConfigEntry:
-    """A single-programme StudyLife config entry, not yet added to hass."""
+    """A single-programme StudyAtrium config entry, not yet added to hass."""
     return MockConfigEntry(
         domain=DOMAIN,
         title="StudyAtrium",

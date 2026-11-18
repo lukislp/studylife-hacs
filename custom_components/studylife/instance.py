@@ -1,4 +1,4 @@
-"""Persisting a StudyLife server's stable instance id in its account entry."""
+"""Persisting a StudyAtrium server's stable instance id in its account entry."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Calendar entities exposing StudyLife sessions and course-goal deadlines."""
+"""Calendar entities exposing StudyAtrium sessions and course-goal deadlines."""
 
 from __future__ import annotations
 

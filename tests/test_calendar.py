@@ -1,4 +1,4 @@
-"""Tests for the StudyLife calendar entities (calendar.py).
+"""Tests for the StudyAtrium calendar entities (calendar.py).
 
 Both entities are pure read-through views over `coordinator.data` (sessions /
 course_goals) - no API calls of their own - so they're built directly against

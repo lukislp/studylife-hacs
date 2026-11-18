@@ -1,4 +1,4 @@
-"""Tests for the StudyLife config flow (menu, account, display, reauth, reconfigure,
+"""Tests for the StudyAtrium config flow (menu, account, display, reauth, reconfigure,
 options)."""
 
 from __future__ import annotations
@@ -616,7 +616,7 @@ def _zeroconf_info(
         port=port,
         hostname=hostname,
         type="_studylife-display._tcp.local.",
-        name="StudyLife Display (studylife-display)._studylife-display._tcp.local.",
+        name="StudyAtrium Display (studylife-display)._studylife-display._tcp.local.",
         properties=properties,
     )
 
@@ -823,7 +823,7 @@ def _display_entry(url: str = "https://10.0.0.5:8795", **extra: Any) -> MockConf
 
 
 # ---------------------------------------------------------------------------
-# Zeroconf discovery of a StudyLife server (_studylife._tcp)
+# Zeroconf discovery of a StudyAtrium server (_studylife._tcp)
 # ---------------------------------------------------------------------------
 
 SERVER_URL = "https://studylife.example.org"

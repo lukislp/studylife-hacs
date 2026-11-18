@@ -1,4 +1,4 @@
-"""Thin async client for the StudyLife REST API.
+"""Thin async client for the StudyAtrium REST API.
 
 The API is protected by a per-user, long-lived API key generated from the
 StudyLife app's Setup page ("Home Assistant" card - see docs/ARCHITECTURE.md);
@@ -53,7 +53,7 @@ def is_valid_instance_id(value: Any) -> bool:
 
 
 class StudyLifeApiError(Exception):
-    """Raised when the StudyLife API can't be reached or returns an error."""
+    """Raised when the StudyAtrium API can't be reached or returns an error."""
 
 
 class StudyLifeApiAuthError(StudyLifeApiError):
@@ -135,7 +135,7 @@ class StudyLifeApiClient:
                     method, url, json=json, headers=headers
                 )
                 if response.status == 401:
-                    # Key rejected - it was regenerated/revoked in the StudyLife app (the
+                    # Key rejected - it was regenerated/revoked in the StudyAtrium app (the
                     # long-lived key never expires by itself). Distinct exception type so
                     # the coordinator can surface Home Assistant's reauth flow instead of
                     # a generic failure.
@@ -323,5 +323,5 @@ class StudyLifeApiClient:
         return body
 
     async def async_test_connection(self) -> None:
-        """Raise StudyLifeApiError if the base URL doesn't look like a StudyLife server."""
+        """Raise StudyLifeApiError if the base URL doesn't look like a StudyAtrium server."""
         await self.async_get_settings()

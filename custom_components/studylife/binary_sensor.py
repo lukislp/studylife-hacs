@@ -1,4 +1,4 @@
-"""Binary sensors mirroring the warning states shown on the StudyLife dashboard.
+"""Binary sensors mirroring the warning states shown on the StudyAtrium dashboard.
 
 Hub set (static, on the per-config-entry hub device): app-global warnings and
 live states. Per-programme set (dynamic, one per study programme device):
@@ -92,7 +92,7 @@ PROGRAM_BINARY_SENSOR_DESCRIPTIONS: tuple[
         value_fn=lambda program: program.program.is_completed,
     ),
     StudyLifeProgramBinarySensorDescription(
-        # Whether THIS programme is the one the StudyLife app currently treats as
+        # Whether THIS programme is the one the StudyAtrium app currently treats as
         # active (settings.activeStudyProgramId) - per-device counterpart of the
         # hub's sensor active_program. HA visibility no longer depends on it.
         key="program_active",

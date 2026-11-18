@@ -1,7 +1,7 @@
 """Tests for DisplayApiClient (custom_components/studylife/display_api.py).
 
 Deliberately standalone: aiohttp + aioresponses only, no Home Assistant test harness -
-mirrors test_api.py's own approach for the StudyLife account client.
+mirrors test_api.py's own approach for the StudyAtrium account client.
 """
 
 from __future__ import annotations

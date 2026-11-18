@@ -1,1 +1,1 @@
-"""Tests for the StudyLife Home Assistant integration."""
+"""Tests for the StudyAtrium Home Assistant integration."""
