@@ -329,7 +329,9 @@ Run the tests with `pytest tests/ -v --cov=custom_components/studylife --cov-rep
 
 ## Privacy
 
-See [PRIVACY.md](PRIVACY.md) for what this integration stores and where data goes.
+See [PRIVACY.md](PRIVACY.md) for what this integration stores and where data goes, in particular that note excerpts, session notes and grades appear in entity attributes and therefore in the Home Assistant recorder (with an exclude recipe), and that all notes are fetched on every poll.
+
+**Controller:** the operator of your instance. **Publisher:** see the imprint at <https://lktec.org/impressum>.
 
 ## License
 
