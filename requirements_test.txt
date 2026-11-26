@@ -1537,9 +1537,9 @@ home-assistant-bluetooth==2.0.0 \
     --hash=sha256:3febd16b194812b156024d9bc8ce8ec7622cdd8d159047cac504cc77ca034ea1 \
     --hash=sha256:8d7c2ac48c303adacad73cb6cdfe7710f2fccd2a367d4c3106acf301b0d22b91
     # via homeassistant
-homeassistant==2026.11.2 \
-    --hash=sha256:3d83587c7770bc1cb071f65388e9864732809d5077e0691e37cd9ce4ca4a9ca5 \
-    --hash=sha256:7a026d4324a59b9fdb694816ad72ade4fc16a7a11a11b87b3c93c61258800cc0
+homeassistant==2026.11.3 \
+    --hash=sha256:1812e29d14ae255441427abdbbb14941e753689f7add6c967f9d6075fd97348d \
+    --hash=sha256:8b437172121d48919e9487f2fb91a78e4e0466f2e52f68e0a98a2ee72a1c55d1
     # via pytest-homeassistant
 httpcore==1.0.9 \
     --hash=sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55 \
@@ -2609,9 +2609,9 @@ pytest-freezer==0.4.9 \
     --hash=sha256:21bf16bc9cc46bf98f94382c4b5c3c389be7056ff0be33029111ae11b3f1c82a \
     --hash=sha256:8b6c50523b7d4aec4590b52bfa5ff766d772ce506e2bf4846c88041ea9ccae59
     # via pytest-homeassistant
-pytest-homeassistant==2026.11.2 \
-    --hash=sha256:cb14bd38ec60e8edeabfd8cbf88b7882084c69108474bb674bb99fec6bdb089e \
-    --hash=sha256:ff8649c5bb1482bb17b89c44a3a07db1b3de561e1c341e9428b931552d833bfc
+pytest-homeassistant==2026.11.3 \
+    --hash=sha256:874e82d8a04344539a9bdce5710106e1ee9066757135e910bb5ad64fa50e3b19 \
+    --hash=sha256:d72fdeab8bc392fbe32511e7556239a5a0ca9ab9116638a5c0440933aa2358a3
     # via -r requirements_test.in
 pytest-socket==0.8.1 \
     --hash=sha256:2f57787914ad2e1308d09ce141b95c3e55741fbb4fb7b7556593a6b063e0c9c7 \
